@@ -136,7 +136,7 @@ class Game:
 
         for state in self.states.values():
             if state in free_neighbors:
-                free_neighboors.remove(state)
+                free_neighbors.remove(state)
 
         return free_neighbors
 
