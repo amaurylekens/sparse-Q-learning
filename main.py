@@ -3,7 +3,7 @@ from agent import Agent
 from game import Game
 from prey import Prey
 from rules_generator import rules_generator
-
+import copy
 
 actions_map = {0: (1,0), 1:(0,1), 2:(-1,0), 3:(0,-1), 4:(0,0)}
 
@@ -13,7 +13,7 @@ def inv_map(action_to_map):
             return action_id
 
 # create a game
-game = Game({0:(5,2), 1:(3,1)})
+game = Game({0:(3,7), 1:(3,1)})
 
 # create a specific context graph and add rules
 n_actions = {0:5, 1:5}
@@ -27,7 +27,7 @@ for rule in rules:
 predators = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
 prey = Prey(5)
 
-steps = 100000
+steps = 500000
 alpha = 0.3
 gamma = 0.9
 
@@ -37,20 +37,22 @@ for step in range(steps):
     print("step {}".format(step))
     
     # get the current state
-    state = game.states
+    state = copy.copy(game.states)
+    print("state {}".format(state))
 
-    # compute the action of the predators and the prey
-    actions = dict()
+    # compute the action of the predators
     j_action = dict()
     for i, predator in enumerate(predators):
         j_action[i] = actions_map[predator.get_action_choice(state)]
-    actions["pred"] = j_action
-    actions["prey"] = actions_map[prey.get_action_choice()]
+
+    print("joint action {}".format(j_action))
 
     # play the actions and get the reward and the next state
-    next_state, reward, found = game.play(actions)
+    next_state, reward, found = game.play(j_action)
     if found:
         found_count += 1
+
+    print("next state {}".format(next_state))
 
     j_action = {id:inv_map(action) for id, action in j_action.items()}
 
@@ -61,7 +63,6 @@ for step in range(steps):
     for i, predator in enumerate(predators):
         predator.compute_rhos_updates(reward[i], state, j_action,
                                       next_state, next_j_action, alpha, gamma)
-        #print(predator.rhos_updates)
     
     for predator in predators:
         predator.make_rhos_updates()
@@ -69,6 +70,14 @@ for step in range(steps):
     if step%500 == 0:
         print("found : {}".format(found_count))
         found_count = 0
+        count = 0
+
+    free_cells = game.get_free_neighbor_cells()
+    action = prey.get_action_choice(free_cells)
+
+    print("prey action {}".format(action))
+    game.play_prey(action)
+
 
     #game.print()
 

@@ -12,11 +12,13 @@ class Prey:
 
         self.n_action = n_action
 
-    def get_action_choice(self):
+    def get_action_choice(self, free_cells):
 
         """
         return the prey action choice (random)
+        :param free_cells: the neighbor cells
         """
-        a_t = random.randint(0, self.n_action-1)
+
+        a_t = free_cells[random.randint(0, len(free_cells)-1)]
 
         return a_t

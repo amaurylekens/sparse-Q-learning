@@ -20,12 +20,12 @@ class Game:
         self.prey = (0, 0)
         self.event = None
 
-    def play(self, actions):
+    def play(self, j_action):
 
         """
         run one episode of the game
 
-        :param actions: dict with the prey and predators actions
+        :param j_action: dict with the predators actions
         :return states: current state of the game
         :return reward: reward for each predators
         :return capture: bool, true if the prey is catched
@@ -33,12 +33,9 @@ class Game:
 
         capture = False
 
-        for pred_id, pred_action in actions["pred"].items():
+        for pred_id, pred_action in j_action.items():
             # move of the predator
             self.states[pred_id] = self.move(pred_id, pred_action)
-            # move of the predator relative to the prey
-            relative_move = tuple(map(lambda x: (-1)*x, actions["prey"]))
-            self.states[pred_id] = self.move(pred_id, relative_move)
 
         # boolean if there is predators collision
         collision = (self.states[1] == self.states[0])
@@ -127,6 +124,28 @@ class Game:
             new_states.append(new_state)
         self.states = {pred_id: state
                        for pred_id, state in enumerate(new_states)}
+
+    def get_free_neighbor_cells(self):
+
+        """
+        return free neighbor cells of the prey
+        :return: list of the free neighbor cells
+        """
+
+        free_neighbors = [(1,0), (-1,0), (0,1), (0,-1)]
+
+        for state in self.states.values():
+            if state in free_neighbors:
+                free_neighboors.remove(state)
+
+        return free_neighbors
+
+    def play_prey(self, action):
+
+        # move of the predator relative to the prey
+        relative_move = tuple(map(lambda x: (-1)*x, action))
+        for pred_id, state in self.states.items():
+            self.states[pred_id] = self.move(pred_id, relative_move)
 
     def print(self):
 
