@@ -69,12 +69,10 @@ class CoordinationGraph():
         :param j_action: the j_action that the rules checks
         :return: the corresponding rules
         """
-
         sel_rules = []
         for rule in self.rules.values():
             if (agent_id in rule["actions"].keys() and
                     rule["state"] == state):
-
                 if j_action != -1:
                     rule_valided = True
                     for agent_id, action in rule["actions"].items():

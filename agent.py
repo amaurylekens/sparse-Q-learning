@@ -42,7 +42,7 @@ class Agent:
             Qs_t.append(Q_t)
 
         # e-greedy
-        epsilon = 0.1
+        epsilon = 0.2
         if (random.uniform(0, 1) < epsilon):
             a_t = random.randint(0, self.n_action-1)
         else:
@@ -78,12 +78,13 @@ class Agent:
         rules_next = self.coord_graph.get_rules_with_agent(self.id,
                                                            next_state,
                                                            next_action)
+
         self.rhos_updates = dict()
         for rule in rules:
             rule_id = rule["id"]
             update = alpha*reward
             for rule_next in rules_next:
-                weighted_rho = rule_next["rho"]/len(rule_next["action"])
+                weighted_rho = rule_next["rho"]/len(rule_next["actions"])
                 update += alpha*gamma*(weighted_rho)
 
             update -= alpha*rule["rho"]/len(rule["actions"])
@@ -98,4 +99,4 @@ class Agent:
         """
 
         for rule_id,  update in self.rhos_updates.items():
-            coord_graph.rules[rule_id]["rho"] += update
+            self.coord_graph.rules[rule_id]["rho"] += update

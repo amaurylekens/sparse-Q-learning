@@ -7,6 +7,11 @@ from rules_generator import rules_generator
 
 actions_map = {0: (1,0), 1:(0,1), 2:(-1,0), 3:(0,-1), 4:(0,0)}
 
+def inv_map(action_to_map):
+    for action_id, action in actions_map.items():
+        if action_to_map == action:
+            return action_id
+
 # create a game
 game = Game({0:(5,2), 1:(3,1)})
 
@@ -22,9 +27,9 @@ for rule in rules:
 predators = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
 prey = Prey(5)
 
-steps = 10000
-alpha = 0.1
-gamma = 0.1
+steps = 100000
+alpha = 0.3
+gamma = 0.9
 
 # play the game
 found_count = 0
@@ -47,6 +52,8 @@ for step in range(steps):
     if found:
         found_count += 1
 
+    j_action = {id:inv_map(action) for id, action in j_action.items()}
+
     # compute the best joint action of the next state
     next_j_action = graph.compute_joint_action(next_state)
 
@@ -54,6 +61,7 @@ for step in range(steps):
     for i, predator in enumerate(predators):
         predator.compute_rhos_updates(reward[i], state, j_action,
                                       next_state, next_j_action, alpha, gamma)
+        #print(predator.rhos_updates)
     
     for predator in predators:
         predator.make_rhos_updates()
@@ -63,8 +71,6 @@ for step in range(steps):
         found_count = 0
 
     #game.print()
-
-print(graph.rules)
 
 
 

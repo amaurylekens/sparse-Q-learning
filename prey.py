@@ -1,5 +1,6 @@
 import random
 
+
 class Prey:
     def __init__(self, n_action):
 

@@ -29,7 +29,7 @@ def rules_generator():
             for action in all_actions:
                 actions = {0: action[0], 1: action[1]}
                 rho = 75
-                id = rules_count
+                id = len(rules)
                 rule = {"state": state, "actions": actions,
                         "id": id, "rho": rho}
                 rules.append(rule)
@@ -48,15 +48,14 @@ def rules_generator():
                 for action in all_actions:
                     actions = {0: action[0], 1: action[1]}
                     rho = 75
-                    id_ = rules_count
+                    id_ = len(rules)
                     rule = {"state": state, "actions": actions,
                             "id": id_, "rho": rho}
                     rules.append(rule)
-                    rules_count += 1
 
     # individual rules
     for id in predator_ids:
-        for state in possible_states_predators:
+        for state in all_states:
             if (dist(state[id], (0, 0)) <= gap and
                     dist(state[id], (0, 0)) > 0 and
                     dist(state[id], state[abs(id-1)]) > 0 and
@@ -66,11 +65,10 @@ def rules_generator():
                     for action in range(n_actions):
                         actions = {id: action}
                         rho = 75
-                        id_ = rules_count
+                        id_ = len(rules)
                         rule = {"state": state, "actions": actions,
                                 "id": id_, "rho": rho}
                         rules.append(rule)
-                        rules_count += 1
 
     return rules
 
