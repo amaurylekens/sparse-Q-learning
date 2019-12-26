@@ -132,7 +132,7 @@ class Game:
         :return: list of the free neighbor cells
         """
 
-        free_neighbors = [(1,0), (-1,0), (0,1), (0,-1)]
+        free_neighbors = [(1,0), (9,0), (0,1), (0,9)]
 
         for state in self.states.values():
             if state in free_neighbors:

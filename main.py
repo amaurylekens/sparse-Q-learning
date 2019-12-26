@@ -13,7 +13,7 @@ def inv_map(action_to_map):
             return action_id
 
 # create a game
-game = Game({0:(3,7), 1:(3,1)})
+game = Game({0:(3,7), 1:(3,6)})
 
 # create a specific context graph and add rules
 n_actions = {0:5, 1:5}
@@ -27,7 +27,7 @@ for rule in rules:
 predators = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
 prey = Prey(5)
 
-steps = 500000
+steps = 200
 alpha = 0.3
 gamma = 0.9
 
@@ -38,21 +38,16 @@ for step in range(steps):
     
     # get the current state
     state = copy.copy(game.states)
-    print("state {}".format(state))
 
     # compute the action of the predators
     j_action = dict()
     for i, predator in enumerate(predators):
         j_action[i] = actions_map[predator.get_action_choice(state)]
 
-    print("joint action {}".format(j_action))
-
     # play the actions and get the reward and the next state
     next_state, reward, found = game.play(j_action)
     if found:
         found_count += 1
-
-    print("next state {}".format(next_state))
 
     j_action = {id:inv_map(action) for id, action in j_action.items()}
 
@@ -60,12 +55,12 @@ for step in range(steps):
     next_j_action = graph.compute_joint_action(next_state)
 
     # compute and make the rho update
+    rules_id = []
     for i, predator in enumerate(predators):
-        predator.compute_rhos_updates(reward[i], state, j_action,
-                                      next_state, next_j_action, alpha, gamma)
-    
+        predator.compute_rho_update(reward[i], state, j_action,
+                                    next_state, next_j_action, alpha, gamma)  
     for predator in predators:
-        predator.make_rhos_updates()
+        predator.make_rho_update()
 
     if step%500 == 0:
         print("found : {}".format(found_count))
@@ -75,7 +70,7 @@ for step in range(steps):
     free_cells = game.get_free_neighbor_cells()
     action = prey.get_action_choice(free_cells)
 
-    print("prey action {}".format(action))
+    #print("prey action {}".format(action))
     game.play_prey(action)
 
 

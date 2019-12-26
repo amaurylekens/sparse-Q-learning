@@ -17,7 +17,7 @@ class Agent:
         self.id = id
         self.coord_graph = coord_graph
         self.n_action = n_action
-        self.rhos_updates = {}
+        self.rho_update = {}
 
     def get_action_choice(self, state):
 
@@ -47,16 +47,18 @@ class Agent:
             a_t = random.randint(0, self.n_action-1)
         else:
             # find index of the max Q-values
+            #print(Qs_t)
             max_index = [i for i, j in enumerate(Qs_t)
                          if j == max(Qs_t)]
+            #print(max_index)
             # choose one of the max-index with uniform distribution
             p = [1/len(max_index) for i in range(len(max_index))]
             a_t = np.random.choice(max_index, p=p)
 
         return a_t
 
-    def compute_rhos_updates(self, reward, state, action,
-                             next_state, next_action, alpha, gamma):
+    def compute_rho_update(self, reward, state, action,
+                           next_state, next_action, alpha, gamma):
 
         """
         compute the values to be added to each rho
@@ -71,32 +73,32 @@ class Agent:
         :param gamma: discount factor
         """
 
-        # retrieve the rules the agent is involved in that
-        # correspond to the action-state and the next action state
-        rules = self.coord_graph.get_rules_with_agent(self.id,
-                                                      state, action)
-        rules_next = self.coord_graph.get_rules_with_agent(self.id,
+        # retrieve the rule that correspond to the action-state 
+        rule = self.coord_graph.get_rules_with_agent(self.id,
+                                                     state, 
+                                                     action)[0]
+        
+        # retrieve the rule that correspond to the next action-state 
+        rule_next = self.coord_graph.get_rules_with_agent(self.id,
                                                            next_state,
-                                                           next_action)
+                                                           next_action)[0]
 
-        self.rhos_updates = dict()
-        for rule in rules:
-            rule_id = rule["id"]
-            update = alpha*reward
-            for rule_next in rules_next:
-                weighted_rho = rule_next["rho"]/len(rule_next["actions"])
-                update += alpha*gamma*(weighted_rho)
+        self.rho_update = dict()
+        rule_id = rule["id"]
 
-            update -= alpha*rule["rho"]/len(rule["actions"])
+        update = alpha*reward
+        weighted_rho = rule_next["rho"]/len(rule_next["actions"])
+        update += alpha*gamma*(weighted_rho)
+        update -= alpha*rule["rho"]/len(rule["actions"])
 
-            self.rhos_updates[rule_id] = update
+        self.rho_update[rule_id] = update
 
-    def make_rhos_updates(self):
+    def make_rho_update(self):
 
         """
         make the update of the rhos on the coord_graph
         with the computed update-values
         """
 
-        for rule_id,  update in self.rhos_updates.items():
+        for rule_id,  update in self.rho_update.items():
             self.coord_graph.rules[rule_id]["rho"] += update
