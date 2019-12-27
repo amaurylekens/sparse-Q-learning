@@ -1,9 +1,10 @@
+import copy
+
 from coordination_graph import CoordinationGraph
+from rules_generator import rules_generator
 from agent import Agent
 from game import Game
 from prey import Prey
-from rules_generator import rules_generator
-import copy
 
 actions_map = {0: (1,0), 1:(0,1), 2:(-1,0), 3:(0,-1), 4:(0,0)}
 
@@ -19,15 +20,15 @@ game = Game({0:(3,7), 1:(3,6)})
 n_actions = {0:5, 1:5}
 graph = CoordinationGraph(n_actions)
 rules = rules_generator()
+
 for rule in rules:
     graph.add_rule(rule)
-
 
 # create predators and prey
 predators = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
 prey = Prey(5)
 
-steps = 3000
+steps = 10000
 alpha = 0.3
 gamma = 0.9
 
@@ -58,7 +59,7 @@ for step in range(steps):
     rules_id = []
     for i, predator in enumerate(predators):
         predator.compute_rho_update(reward[i], state, j_action,
-                                    next_state, next_j_action, alpha, gamma)  
+                                    next_state, next_j_action, alpha, gamma) 
     for predator in predators:
         predator.make_rho_update()
 
@@ -70,7 +71,6 @@ for step in range(steps):
     free_cells = game.get_free_neighbor_cells()
     action = prey.get_action_choice(free_cells)
 
-    #print("prey action {}".format(action))
     game.play_prey(action)
 
 

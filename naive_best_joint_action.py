@@ -1,6 +1,6 @@
 import numpy as np
 
-class Naive():
+class NaiveBestJointAction():
     def __init__(self, n_actions, rules):
 
         self.rules = rules

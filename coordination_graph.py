@@ -1,5 +1,4 @@
-from elimination_algorithm import EliminationAlgorithm
-from naive import Naive
+from naive_best_joint_action import NaiveBestJointAction
 
 
 class CoordinationGraph():
@@ -38,29 +37,7 @@ class CoordinationGraph():
             if rule["state"] == current_state:
                 current_rules.append(rule)
 
-        # retrieve the ids of the agents involved
-        current_agent_ids = []
-        for current_rule in current_rules:
-            for agent_id in current_rule["actions"].keys():
-                if agent_id not in current_agent_ids:
-                    current_agent_ids.append(agent_id)
-
-        if current_agent_ids != [0,1]:
-            print(current_agent_ids)
-
-        # select number of actions for each agent involved
-        n_actions = dict()
-        for agent_id, n_action in self.n_actions.items():
-            if agent_id in current_agent_ids:
-                n_actions[agent_id] = n_action
-
-        # elimination to compute the best joint action
-        current_agent_ids = sorted(current_agent_ids, reverse=True)
-        elimination = EliminationAlgorithm(n_actions, current_rules,
-                                           current_agent_ids)
-        naive = Naive(self.n_actions, current_rules)
-        #elimination.forward()
-        #j_action = elimination.backward()
+        naive = NaiveBestJointAction(self.n_actions, current_rules)
 
         j_action = naive.compute_best_j_action()
 
@@ -76,19 +53,64 @@ class CoordinationGraph():
         :param j_action: the j_action that the rules checks
         :return: the corresponding rules
         """
+
         sel_rules = []
         for rule in self.rules.values():
-            if (agent_id in rule["actions"].keys() and
-                    rule["state"] == state):
+            states_valided = True
+            for agent_id_r, rule_state in rule["state"].items():
+                if state[agent_id_r] != rule_state:
+                    states_valided = False
+                    break
+            if states_valided:
                 if j_action != -1:
-                    rule_valided = True
-                    for agent_id, action in rule["actions"].items():
-                        if j_action[agent_id] != action:
-                            rule_valided = False
+                    actions_valided = True
+                    for agent_id_a, action in rule["actions"].items():
+                        if j_action[agent_id_a] != action:
+                            actions_valided = False
                             break
-                    if rule_valided:
+                    if actions_valided:
                         sel_rules.append(rule)
                 else:
                     sel_rules.append(rule)
 
+        # filter rules where the agent is involved
+        temp = []
+        for rule in sel_rules:
+            if agent_id in list(rule["actions"].keys()):
+                temp.append(rule)
+
+        sel_rules = temp
+
+        # remove the individual rules if it is coordonate state
+        # and inversely
+        temp = []
+        coordinate = self.is_coordinate_state(agent_id, state)
+        for rule in sel_rules:
+            if coordinate:
+                if len(rule["actions"]) > 1:
+                    temp.append(rule)
+            else:
+                if len(rule["actions"]) == 1:
+                    temp.append(rule)
+        sel_rules = temp
+
         return sel_rules
+
+    def is_coordinate_state(self, agent_id, state):
+
+        """
+        say if it's coordinated status to the agent requesting it.
+
+        :param agent_id: the requesting agent
+        :param state: the state of the game 
+        :return: true if it is a coordinate state
+        """
+        
+        coordinate = False
+        for rule in self.rules.values():
+            if (agent_id in rule["actions"].keys() and
+                rule["state"] == state and len(rule["actions"]) > 1):
+
+                coordinate = True
+
+        return coordinate

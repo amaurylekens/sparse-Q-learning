@@ -5,7 +5,7 @@ def rules_generator():
     """
 
     rules = []  # store the rules
-    states = []  # store the valid states
+    coor_states = []  # store the coordinate states
     predator_ids = [0, 1]
     gap = 10
 
@@ -29,7 +29,7 @@ def rules_generator():
                 dist(state[0], (0, 0)) > 0 and
                 dist(state[0], state[1]) > 0):
 
-            states.append(state)
+            coor_states.append(state)
 
             for action in all_actions:
                 actions = {0: action[0], 1: action[1]}
@@ -44,8 +44,8 @@ def rules_generator():
         if (dist(state[0], state[1]) <= 2 and dist(state[0], state[1]) > 0 and
                 dist(state[1], (0, 0)) > 0 and dist(state[0], (0, 0)) > 0):
 
-            if state not in states:
-                states.append(state)
+            if state not in coor_states:
+                coor_states.append(state)
                 for action in all_actions:
                     actions = {0: action[0], 1: action[1]}
                     rho = 75
@@ -54,23 +54,20 @@ def rules_generator():
                             "id": id, "rho": rho}
                     rules.append(rule)
 
+    all_states = [(i, j) for i in range(10) for j in range(10)]
     # individual rules
     for id in predator_ids:
         for state in all_states:
-            if (dist(state[id], (0, 0)) <= gap and
-                    dist(state[id], (0, 0)) > 0 and
-                    dist(state[id], state[abs(id-1)]) > 0 and
-                    dist(state[abs(id-1)], (0, 0)) > 0):
+            if (dist(state, (0, 0)) <= gap and
+                    dist(state, (0, 0)) > 0):            
 
-                if state not in states:
-                    for action in range(n_actions):
-                        actions = {id: action}
-                        rho = 75
-                        id_ = len(rules)
-                        rule = {"state": state, "actions": actions,
-                                "id": id_, "rho": rho}
-                        rules.append(rule)
-
+                for action in range(n_actions):
+                    actions = {id: action}
+                    rho = 75
+                    id_ = len(rules)
+                    rule = {"state": {id: state}, "actions": actions,
+                            "id": id_, "rho": rho}
+                    rules.append(rule)
     return rules
 
 
