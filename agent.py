@@ -19,12 +19,13 @@ class Agent:
         self.n_action = n_action
         self.rho_update = {}
 
-    def get_action_choice(self, state):
+    def get_action_choice(self, state, epsilon):
 
         """
         return the agent's choice of action for a particular state
 
         :param state: the state of the game
+        :param epsilon: e-greedy parameter
         :return: the agent's choice of action
         """
 
@@ -42,7 +43,6 @@ class Agent:
             Qs_t.append(Q_t)
 
         # e-greedy
-        epsilon = 0.2
         if (random.uniform(0, 1) < epsilon):
             a_t = random.randint(0, self.n_action-1)
         else:
@@ -60,8 +60,8 @@ class Agent:
                            next_state, next_action, alpha, gamma):
 
         """
-        compute the values to be added to each rho
-        in which the agent is involved.
+        compute the values to be added to each rho in which
+        the agent is involved.
 
         :param reward: reward received for the last action choice
         :param state: the state before the joint action
@@ -72,16 +72,17 @@ class Agent:
         :param gamma: discount factor
         """
 
-        # retrieve the rule that correspond to the action-state 
+        # retrieve the rule that correspond to the action-state
         rule = self.coord_graph.get_rules_with_agent(self.id,
-                                                     state, 
+                                                     state,
                                                      action)[0]
-        
-        # retrieve the rule that correspond to the next action-state 
-        rule_next = self.coord_graph.get_rules_with_agent(self.id,
-                                                           next_state,
-                                                           next_action)[0]
 
+        # retrieve the rule that correspond to the next action-state
+        rule_next = self.coord_graph.get_rules_with_agent(self.id,
+                                                          next_state,
+                                                          next_action)[0]
+
+        # compute the update and store it
         self.rho_update = dict()
         rule_id = rule["id"]
 

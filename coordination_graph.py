@@ -1,3 +1,5 @@
+import json
+
 from naive_best_joint_action import NaiveBestJointAction
 
 
@@ -102,15 +104,51 @@ class CoordinationGraph():
         say if it's coordinated status to the agent requesting it.
 
         :param agent_id: the requesting agent
-        :param state: the state of the game 
+        :param state: the state of the game
         :return: true if it is a coordinate state
         """
-        
+
         coordinate = False
         for rule in self.rules.values():
             if (agent_id in rule["actions"].keys() and
-                rule["state"] == state and len(rule["actions"]) > 1):
+               rule["state"] == state and len(rule["actions"]) > 1):
 
                 coordinate = True
 
         return coordinate
+
+    def save_rules(self, directory, name):
+
+        """
+        saves the rules in json format
+
+        :param directory: directory where to save
+        :param name: save file name
+        """
+
+        path = "{}/{}.json".format(directory, name)
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(self.rules, f, ensure_ascii=False, indent=4)
+
+    def load_rules(self, path):
+
+        """
+        load the rules from a json file
+
+        :param path: path to the json file
+        """
+
+        with open(path) as f:
+            data = json.load(f)
+
+        rules = dict()
+        for key, value in data.items():
+            rule = {"id": value["id"],
+                    "rho": value["rho"],
+                    "actions": {int(k): v
+                                for k, v in value["actions"].items()},
+                    "state": {int(k): tuple(v)
+                              for k, v in value["state"].items()}}
+            rules[int(key)] = rule
+
+        self.rules = rules

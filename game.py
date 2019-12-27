@@ -19,6 +19,9 @@ class Game:
         self.ncol = ncol
         self.prey = (0, 0)
         self.event = None
+        self.print_states = {"pred": {0: initial_states[0],
+                                      1: initial_states[1]},
+                             "prey": self.prey}
 
     def play(self, j_action):
 
@@ -35,13 +38,16 @@ class Game:
 
         for pred_id, pred_action in j_action.items():
             # move of the predator
-            self.states[pred_id] = self.move(pred_id, pred_action)
+            self.states[pred_id] = self.move(self.states[pred_id], pred_action)
+            self.print_states["pred"][pred_id] = \
+                self.move(self.print_states["pred"][pred_id], pred_action)
 
         # boolean if there is predators collision
         collision = (self.states[1] == self.states[0])
 
         # boolean for each predators if there is next to the prey
-        next_prey_states = [(1, 0), (9, 0), (0, 1), (0, 9)]
+        next_prey_states = [(1, 0), ((self.ncol-1), 0),
+                            (0, 1), (0, (self.nrow-1))]
         next_prey = [state in next_prey_states
                      for state in self.states.values()]
 
@@ -73,7 +79,10 @@ class Game:
             direction = directions[np.random.choice(c, p=p)]
             for pred_id, state in self.states.items():
                 if state == self.prey:
-                    self.states[pred_id] = self.move(pred_id, direction)
+                    self.states[pred_id] = self.move(self.states[pred_id],
+                                                     direction)
+                    self.print_states["pred"][pred_id] = self.move(
+                        self.print_states["pred"][pred_id], direction)
 
         elif good_capture:
             capture = True
@@ -88,19 +97,19 @@ class Game:
 
         return (self.states, reward, capture)
 
-    def move(self, pred_id, action):
+    def move(self, state, action):
 
         """
-        move a predator on the grid
+        move a player on the grid
 
-        :param pred_id: the id of the predator to move
+        :param state: the state of the player to move
         :param action: one valid action ((0,1), (1,0), (-1,0), (0,-1))
         :return: the new state of the predator
         """
 
-        state = self.states[pred_id]
         state = tuple(map(lambda x, y: x + y, state, action))
-        state = ((state[0] + 10) % 10, (state[1] + 10) % 10)
+        state = ((state[0] + self.ncol) % self.ncol,
+                 (state[1] + self.nrow) % self.nrow)
 
         return state
 
@@ -114,7 +123,8 @@ class Game:
         for state in range(len(self.states)):
             # potentiel new states : all states except prey
             # and others predators position
-            pot_new_states = [(i, j) for i in range(10) for j in range(10)]
+            pot_new_states = [(i, j) for i in range(self.nrow)
+                              for j in range(self.ncol)]
             pot_new_states.remove(self.prey)
             pot_new_states = [s for s in pot_new_states if s not in new_states]
             # generate new position with uniform distribution
@@ -122,8 +132,16 @@ class Game:
             index = list(range(len(pot_new_states)))
             new_state = pot_new_states[np.random.choice(index, p=p)]
             new_states.append(new_state)
+
+        # update the state
         self.states = {pred_id: state
                        for pred_id, state in enumerate(new_states)}
+
+        # update the print state
+        self.print_states["pred"][0] = self.move(self.print_states["prey"],
+                                                 self.states[0])
+        self.print_states["pred"][1] = self.move(self.print_states["prey"],
+                                                 self.states[1])
 
     def get_free_neighbor_cells(self):
 
@@ -132,8 +150,10 @@ class Game:
         :return: list of the free neighbor cells
         """
 
-        free_neighbors = [(1,0), (9,0), (0,1), (0,9)]
+        free_neighbors = [(1, 0), ((self.ncol-1), 0),
+                          (0, 1), (0, (self.nrow-1))]
 
+        # remove the neighbor cells occupied
         for state in self.states.values():
             if state in free_neighbors:
                 free_neighbors.remove(state)
@@ -142,10 +162,21 @@ class Game:
 
     def play_prey(self, action):
 
-        # move of the predator relative to the prey
+        """
+        make the move of the prey
+
+        :param action: action of the prey
+        """
+
+        # move of the predators relative to the prey
         relative_move = tuple(map(lambda x: (-1)*x, action))
         for pred_id, state in self.states.items():
-            self.states[pred_id] = self.move(pred_id, relative_move)
+            self.states[pred_id] = self.move(self.states[pred_id],
+                                             relative_move)
+
+        # move the prey on the printed grid
+        self.print_states["prey"] = self.move(self.print_states["prey"],
+                                              action)
 
     def print(self):
 
@@ -153,12 +184,15 @@ class Game:
         print the grid game with the predators and the prey
         """
 
-        predator_0 = (self.states[0][1]*10) + (self.states[0][0])
-        predator_1 = ((self.states[1][1])*10) + (self.states[1][0])
-        prey = ((self.prey[1])*10) + (self.prey[0])
+        predator_0 = ((self.print_states["pred"][0][1]*self.nrow) +
+                      self.print_states["pred"][0][0])
+        predator_1 = ((self.print_states["pred"][1][1]*self.nrow) +
+                      self.print_states["pred"][1][0])
+        prey = ((self.print_states["prey"][1]*self.nrow) +
+                self.print_states["prey"][0])
 
         if self.event is not None:
-            name = self.print_event(self.event)
+            name = self.event
             m = int(len(name)/2) + 1
             print("{}|{}".format(" "*m, " "*m))
             print("{}|{}".format(" "*m, " "*m))
@@ -169,16 +203,19 @@ class Game:
             print("{}|{}".format(" "*m, " "*m))
             print()
             print()
+            self.event = None
 
-        print("State : {}".format(self.states))
+        print("State : {}".format(self.print_states))
 
         cell = 0
-        line = " " + ("____ "*self.ncol)
+        line = " " + "".join(["  {}  ".format(i) for i in range(self.ncol)])
+        print(line)
+        line = "  " + ("____ "*self.ncol)
         print(line)
         for i in range(self.nrow):
-            line = "|" + ("    |"*self.ncol)
+            line = "{}|".format(i) + ("    |"*self.ncol)
             print(line)
-            line = "|"
+            line = " |"
             for j in range(self.ncol):
                 if cell == prey:
                     line += "  O |"
@@ -190,7 +227,7 @@ class Game:
                     line += "    |"
                 cell += 1
             print(line)
-            line = " " + ("---- "*self.ncol)
+            line = "  " + ("---- "*self.ncol)
             print(line)
         print()
         print()

@@ -4,6 +4,9 @@ def rules_generator():
     generate rules for the prey-predators game
     """
 
+    ncol = 4
+    nrow = 4
+
     rules = []  # store the rules
     coor_states = []  # store the coordinate states
     predator_ids = [0, 1]
@@ -11,15 +14,14 @@ def rules_generator():
 
     # generate all possible states
     all_states = [{0: (i, j), 1: (k, l)}
-                  for i in range(10)
-                  for j in range(10)
-                  for k in range(10)
-                  for l in range(10)]
+                  for i in range(ncol)
+                  for j in range(nrow)
+                  for k in range(ncol)
+                  for l in range(nrow)]
     n_actions = 5  # number of actions
 
     # generate all combinations of actions
     all_actions = [(i, j) for i in range(n_actions) for j in range(n_actions)]
-
 
     # collective rules (the 2 predators are close to the prey)
     for state in all_states:
@@ -54,12 +56,12 @@ def rules_generator():
                             "id": id, "rho": rho}
                     rules.append(rule)
 
-    all_states = [(i, j) for i in range(10) for j in range(10)]
+    all_states = [(i, j) for i in range(ncol) for j in range(nrow)]
     # individual rules
     for id in predator_ids:
         for state in all_states:
             if (dist(state, (0, 0)) <= gap and
-                    dist(state, (0, 0)) > 0):            
+                    dist(state, (0, 0)) > 0):
 
                 for action in range(n_actions):
                     actions = {id: action}
