@@ -1,4 +1,5 @@
 from elimination_algorithm import EliminationAlgorithm
+from naive import Naive
 
 
 class CoordinationGraph():
@@ -44,6 +45,9 @@ class CoordinationGraph():
                 if agent_id not in current_agent_ids:
                     current_agent_ids.append(agent_id)
 
+        if current_agent_ids != [0,1]:
+            print(current_agent_ids)
+
         # select number of actions for each agent involved
         n_actions = dict()
         for agent_id, n_action in self.n_actions.items():
@@ -54,8 +58,11 @@ class CoordinationGraph():
         current_agent_ids = sorted(current_agent_ids, reverse=True)
         elimination = EliminationAlgorithm(n_actions, current_rules,
                                            current_agent_ids)
-        elimination.forward()
-        j_action = elimination.backward()
+        naive = Naive(self.n_actions, current_rules)
+        #elimination.forward()
+        #j_action = elimination.backward()
+
+        j_action = naive.compute_best_j_action()
 
         return j_action
 

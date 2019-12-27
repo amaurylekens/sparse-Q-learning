@@ -47,10 +47,9 @@ class Agent:
             a_t = random.randint(0, self.n_action-1)
         else:
             # find index of the max Q-values
-            #print(Qs_t)
             max_index = [i for i, j in enumerate(Qs_t)
                          if j == max(Qs_t)]
-            #print(max_index)
+
             # choose one of the max-index with uniform distribution
             p = [1/len(max_index) for i in range(len(max_index))]
             a_t = np.random.choice(max_index, p=p)

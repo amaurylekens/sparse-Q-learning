@@ -27,7 +27,7 @@ for rule in rules:
 predators = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
 prey = Prey(5)
 
-steps = 200
+steps = 3000
 alpha = 0.3
 gamma = 0.9
 
