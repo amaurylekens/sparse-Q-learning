@@ -1,12 +1,10 @@
-def rules_generator():
+def rules_generator(grid):
 
     """
     generate rules for the prey-predators game
     """
 
-    ncol = 4
-    nrow = 4
-
+    ncol, nrow = grid
     rules = []  # store the rules
     coor_states = []  # store the coordinate states
     predator_ids = [0, 1]

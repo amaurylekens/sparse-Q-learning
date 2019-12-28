@@ -205,8 +205,6 @@ class Game:
             print()
             self.event = None
 
-        print("State : {}".format(self.print_states))
-
         cell = 0
         line = " " + "".join(["  {}  ".format(i) for i in range(self.ncol)])
         print(line)
