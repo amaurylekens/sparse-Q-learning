@@ -20,6 +20,8 @@ class NaiveBestJointAction():
         """
         Allow to compute the best joint action with a set of rules
         and a set of actions
+
+        :return: best joint action
         """
 
         # all possible joint action
