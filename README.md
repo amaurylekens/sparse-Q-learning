@@ -6,7 +6,7 @@ Right now, the best joint action is computed with a naive method and not with th
 
 ### Launch
 
-* learn mode
+1. learn mode
 
 Let the agents learn a policy during n episodes
 
@@ -14,11 +14,11 @@ Let the agents learn a policy during n episodes
 python3 main.py learn [directory] -e episode -g grid -v
 ``` 
 
-  * directory : directory to store the rules file
-  * episode : number of episode
-  * grid : grid size of the prey-predators game
+   * directory : directory to store the rules file
+   * episode : number of episode
+   * grid : grid size of the prey-predators game
 
-* play mode
+2. play mode
 
 Play the game with a learned policy
 
@@ -26,19 +26,19 @@ Play the game with a learned policy
 python3 main.py play [directory] -g grid
 ```
 
-  * directory : directory to store the rules file
-  * grid : grid size of the prey-predators game
+   * directory : directory to store the rules file
+   * grid : grid size of the prey-predators game
   
-* test mode
+3. test mode
 
 Test the performance of the learning
 
 ```bash
 python3 main.py test [directory] -e episode -r run -g grid -v
 ```
-  * episode : number of episode
-  * run : number of run
-  * grid : grid size of the prey-predators game
+   * episode : number of episode
+   * run : number of run
+   * grid : grid size of the prey-predators game
   
 ### Results
 
