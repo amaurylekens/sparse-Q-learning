@@ -1,5 +1,6 @@
 #!/anaconda3/bin python3
 
+import os
 import argparse
 import sys
 import copy
@@ -63,16 +64,21 @@ The commands are:
         # manage the arguments
         parser = argparse.ArgumentParser(
             description='Play the game with a learned policy')
-        parser.add_argument('path', help="path to the rules file")
+        parser.add_argument('directory', help="pdirectory of the rules file")
         parser.add_argument('-g', help="grid size", default=4, type=int)
         
         args = parser.parse_args(sys.argv[2:])
-        print('Running play mode, grid={}, path={}'.format(args.g, args.path))
+        print('Running play mode, grid={}, directory={}'.format(args.g, args.directory))
 
         # run the play mode with the arguments
         grid = (args.g, args.g)
-        path = args.path
-        play_mode(grid, path)
+        path = "{}/{}_{}_grid.json".format(args.directory, args.grid, args.grid)
+        
+        # check if there is a good rules file, if there is let's play
+        if path in os.listdir("./{}".format(args.directory)):
+            play_mode(grid, path)
+        else:
+            print("no rule file in this directory for this grid size")
 
     def test(self):
         parser = argparse.ArgumentParser(
