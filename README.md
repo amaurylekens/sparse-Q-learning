@@ -51,7 +51,7 @@ python3 main.py test [directory] -e episode -r run -g grid -v
   <img src="https://github.com/amaurylekens/sparse-Q-learning/blob/master/images/game_console.png" style="width: 10%; height: 10%"/>
 </p>
 
-### Game in the console
+### Class diagram
 <p align="center">
   <img src="https://github.com/amaurylekens/sparse-Q-learning/blob/master/images/class_diagram.png" style="width: 10%; height: 10%"/>
 </p>
