@@ -226,7 +226,7 @@ def run_episodes(n_episode, grid, graph, verbose=False, offset=0):
     prey = Prey(5)
 
     # learning parameters
-    alpha = 0.2
+    alpha = 0.3
     gamma = 0.9
     epsilon = 0.2
 
@@ -235,10 +235,9 @@ def run_episodes(n_episode, grid, graph, verbose=False, offset=0):
         if verbose:
             print("episode : {}".format(episode + offset))
 
-        epsilon = nth_root(episode, 5.6)
-
         # create a game
-        game = Game({0:(3,0), 1:(0,3)}, ncol, nrow)
+        game = Game({0:(1,0), 1:(0,1)}, ncol, nrow)
+        game.random_position()
 
         capture = False
         round_game = 1
