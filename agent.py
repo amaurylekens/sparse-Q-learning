@@ -23,35 +23,45 @@ class Agent:
 
         """
         return the agent's choice of action for a particular state
+
         :param state: the state of the game
         :param epsilon: e-greedy parameter
         :return: the agent's choice of action
         """
 
-        # recuperate the Q-values for the n agent's actions
-        # 1. retrieve the rules the agent is involved in for the current state
-        rules = self.coord_graph.get_rules_with_agent(self.id, state)
-        Qs_t = []
-        for action in range(self.n_action):
-            # 2. for each rule, if the current action is the correct action
-            # add rule-value/(number of agents involved) to the Q-value
-            Q_t = 0
-            for rule in rules:
-                if rule["actions"][self.id] == action:
-                    Q_t += rule["rho"]/len(rule["actions"])
-            Qs_t.append(Q_t)
-
         # e-greedy
         if (random.uniform(0, 1) < epsilon):
             a_t = random.randint(0, self.n_action-1)
         else:
+            # recuperate all rules for the current state where the agent in involved
+            rules = self.coord_graph.get_rules_with_agent(self.id, state)
+
+            # compute the Q_t for each joint_action 
+            j_actions = [{0:i, 1:j} for i in range(self.n_action) for j in range(self.n_action)]
+            Qs_t = [0]*len(j_actions)
+            for rule in rules:
+                for j_action in j_actions:
+                    rule_validated = True
+                    for agent_id, action in rule["actions"].items():
+                        if j_action[agent_id] != action: 
+                            rule_validated = False
+                            break
+                    if rule_validated:
+                        index = j_actions.index(j_action)
+                        Qs_t[index] += rule["rho"]/len(rule["actions"])
+
+                else:
+                    j_actions.append(rule["actions"])
+                    Qs_t.append(rule["rho"]/len(rule["actions"]))
+
             # find index of the max Q-values
             max_index = [i for i, j in enumerate(Qs_t)
                          if j == max(Qs_t)]
 
             # choose one of the max-index with uniform distribution
             p = [1/len(max_index) for i in range(len(max_index))]
-            a_t = np.random.choice(max_index, p=p)
+            sel_index = np.random.choice(max_index, p=p)
+            a_t = j_actions[sel_index][self.id]
 
         return a_t
             

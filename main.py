@@ -164,10 +164,9 @@ def play_mode(grid, path):
         if choice == "s":
             break
 
-def test_mode(n_episode, n_run, grid, verbose=False):
-
-    # compute interval between two tests
-    interval = int(n_episode/100)
+def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
+    
+    n_interval = int(n_episode/size_interval)
 
     # generate 100 random initial game states
     ncol, nrow = grid
@@ -181,6 +180,8 @@ def test_mode(n_episode, n_run, grid, verbose=False):
 
     run_times = []  # store the list of ratios for each run
     for run in range(n_run):
+
+        print("run : {}".format(run))
         
         # create a specific context graph and add rules
         n_actions = {0:5, 1:5}
@@ -190,15 +191,17 @@ def test_mode(n_episode, n_run, grid, verbose=False):
             graph.add_rule(rule)
 
         times = []  # store capture time for each tests in a run 
-        for i in range(100):
-            graph = run_episodes(interval, grid, graph)
+        for i in range(n_interval):
+            graph = run_episodes(size_interval, grid, graph, verbose, offset=size_interval*i)
+            print("time to test !")
             time = make_capture_test(graph, initial_states, grid)
             times.append(time)
 
             if verbose:
-                print("run : {}".format(run+1))
-                print("step {}/100".format(i+1))
+                print("Test results :")
                 print("mean capture time : {}".format(time))
+
+
         
         run_times.append(ratios)
 
@@ -214,12 +217,9 @@ def test_mode(n_episode, n_run, grid, verbose=False):
     plt.savefig('test.png')
 
 
-def run_episodes(n_episode, grid, graph, verbose=False):
+def run_episodes(n_episode, grid, graph, verbose=False, offset=0):
 
     ncol, nrow = grid
-
-    # create a game
-    game = Game({0:(3,0), 1:(0,3)}, ncol, nrow)
 
     # create predators and prey
     predators = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
@@ -232,38 +232,60 @@ def run_episodes(n_episode, grid, graph, verbose=False):
 
     for episode in range(n_episode):
 
+        if verbose:
+            print("episode : {}".format(episode + offset))
+
         epsilon = nth_root(episode, 5.6)
 
-        if verbose:
-            print("episode {}".format(episode))
+        # create a game
+        game = Game({0:(3,0), 1:(0,3)}, ncol, nrow)
 
-        # get the current state
-        state = copy.copy(game.states)
+        capture = False
+        round_game = 1
+        print("round : {}".format(round_game))
+        while not capture:
+            # get the current state
+            state = copy.copy(game.states)
 
-        # compute the action of the predators
-        j_action = dict()
-        for i, predator in enumerate(predators):
-            j_action[i] = actions_map[predator.get_action_choice(state, epsilon)]
+            # compute the action of the predators
+            j_action = dict()
+            for i, predator in enumerate(predators):
+                j_action[i] = actions_map[predator.get_action_choice(state, epsilon)]
 
-        # play the actions and get the reward and the next state
-        next_state, reward, found = game.play(j_action)
-        j_action = {id:inv_map(action) for id, action in j_action.items()}
+            # play the actions and get the reward and the next state
+            next_state, reward, capture = game.play(j_action)
+            j_action = {id:inv_map(action) for id, action in j_action.items()}
 
-        # compute the best joint action of the next state
-        next_j_action = graph.compute_joint_action(next_state)
+            # compute the best joint action of the next state
+            next_j_action = graph.compute_joint_action(next_state)
 
-        # compute and make the rho update
-        rules_id = []
-        for i, predator in enumerate(predators):
-            predator.compute_rho_update(reward[i], state, j_action,
-                                        next_state, next_j_action, alpha, gamma) 
-        for predator in predators:
-            predator.make_rho_update()
+            # compute and make the rho update
+            rules_id = []
+            for i, predator in enumerate(predators):
+                predator.compute_rho_update(reward[i], state, j_action,
+                                            next_state, next_j_action, alpha, gamma) 
+            for predator in predators:
+                predator.make_rho_update()
 
-        # move the prey on a free neighbor cell
-        free_cells = game.get_free_neighbor_cells()
-        action = prey.get_action_choice(free_cells)
-        game.play_prey(action)
+            # move the prey on a free neighbor cell
+            free_cells = game.get_free_neighbor_cells()
+            action = prey.get_action_choice(free_cells)
+            game.play_prey(action)
+
+            round_game += 1
+
+            # update printed line
+            if verbose:
+                sys.stdout.write('\x1b[1A')
+                sys.stdout.write('\x1b[2K')
+                print("round : {}".format(round_game))
+
+        sys.stdout.write('\x1b[1A')
+        sys.stdout.write('\x1b[2K')
+        sys.stdout.write('\x1b[1A')
+        sys.stdout.write('\x1b[2K')
+
+    print("episode : {} -> stop".format(episode + offset))
 
     return graph
 
@@ -275,12 +297,15 @@ def make_capture_test(graph, initial_states, grid):
     prey = Prey(5)
 
     # test 5 times for all random initial states
-    for initial_state in initial_states:
-        for i in range(5):
+    test_count = 1
+    for i, initial_state in enumerate(initial_states):
+        for j in range(5):
             game = Game(initial_state, ncol, nrow)
+
+            print("test {}/{}".format(test_count, 5*len(initial_states)))
             
             capture = False
-            episode = 0
+            capture_time = 0
             while not capture:
                 state = copy.copy(game.states)
 
@@ -295,8 +320,12 @@ def make_capture_test(graph, initial_states, grid):
                 action = prey.get_action_choice(free_cells)
                 game.play_prey(action)
 
-                episode += 1
-            capture_times.append(episode)
+                capture_time += 1
+            capture_times.append(capture_time)
+
+            sys.stdout.write('\x1b[1A')
+            sys.stdout.write('\x1b[2K')
+            test_count += 1
                 
     mean_capture_time = mean(capture_times)
     return mean_capture_time
