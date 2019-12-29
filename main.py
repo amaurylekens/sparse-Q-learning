@@ -1,12 +1,13 @@
 #!/anaconda3/bin python3
 
 import os
-import argparse
 import sys
 import copy
+import random
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+from statistics import mean
 
 from coordination_graph import CoordinationGraph
 from rules_generator import rules_generator
@@ -167,7 +168,17 @@ def test_mode(n_episode, n_run, grid, verbose=False):
     # compute interval between two tests
     interval = int(n_episode/100)
 
-    run_ratios = []  # store the list of ratios for each run
+    # generate 100 random initial game states
+    ncol, nrow = grid
+    all_states = [{0: (i, j), 1: (k, l)}
+                  for i in range(ncol)
+                  for j in range(nrow)
+                  for k in range(ncol)
+                  for l in range(nrow)]
+    indexes = [random.randint(0, (len(all_states)-1)) for i in range(100)]
+    initial_states = [all_states[i] for i in indexes]
+
+    run_times = []  # store the list of ratios for each run
     for run in range(n_run):
         
         # create a specific context graph and add rules
@@ -177,20 +188,21 @@ def test_mode(n_episode, n_run, grid, verbose=False):
         for rule in rules:
             graph.add_rule(rule)
 
-        ratios = []  # store ratios for each tests in a run 
+        times = []  # store capture time for each tests in a run 
         for i in range(100):
             graph = run_episodes(interval, grid, graph)
-            ratio = make_capture_test(1000, graph)
-            ratios.append(ratio)
+            time = make_capture_test(graph, initial_states, grid)
+            times.append(time)
 
             if verbose:
                 print("run : {}".format(run+1))
                 print("step {}/100".format(i+1))
+                print("mean capture time : {}".format(time))
         
-        run_ratios.append(ratios)
+        run_times.append(ratios)
 
     # average the results over the runs
-    avg = [float(sum(col))/len(col) for col in zip(*run_ratios)]
+    avg = [float(sum(col))/len(col) for col in zip(*run_times)]
     episode = np.arange(0, n_episode, interval).tolist()
 
     plt.plot(episode, avg);
@@ -213,11 +225,13 @@ def run_episodes(n_episode, grid, graph, verbose=False):
     prey = Prey(5)
 
     # learning parameters
-    alpha = 0.3
+    alpha = 0.2
     gamma = 0.9
     epsilon = 0.2
 
     for episode in range(n_episode):
+
+        epsilon = nth_root(episode, 5.6)
 
         if verbose:
             print("episode {}".format(episode))
@@ -252,27 +266,39 @@ def run_episodes(n_episode, grid, graph, verbose=False):
 
     return graph
 
-def make_capture_test(n_episode, graph):
+def make_capture_test(graph, initial_states, grid):
     
-    capture_count = 0
-    game = Game({0:(3,0), 1:(0,3)}, 4, 4)
-
+    ncol, nrow = grid
+    capture_times = []
     agents = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
+    prey = Prey(5)
 
-    for episode in range(n_episode):
+    # test 5 times for all random initial states
+    for initial_state in initial_states:
+        for i in range(5):
+            game = Game(initial_state, ncol, nrow)
+            
+            capture = False
+            episode = 0
+            while not capture:
+                state = copy.copy(game.states)
 
-        state = copy.copy(game.states)
+                j_action = dict()
+                for i, agent in enumerate(agents):
+                   j_action[i] = actions_map[agent.get_action_choice(state, 0.2)]
 
-        j_action = dict()
-        for i, agent in enumerate(agents):
-           j_action[i] = actions_map[agent.get_action_choice(state, 0.2)]
+                _, _, capture = game.play(j_action)
 
-        next_state, reward, capture = game.play(j_action)
-        
-        if capture:
-            capture_count += 1
-     
-    return (capture_count/n_episode)
+                # move the prey on a free neighbor cell
+                free_cells = game.get_free_neighbor_cells()
+                action = prey.get_action_choice(free_cells)
+                game.play_prey(action)
+
+                episode += 1
+            capture_times.append(episode)
+                
+    mean_capture_time = mean(capture_times)
+    return mean_capture_time
 
 def inv_map(action_to_map):
     for action_id, action in actions_map.items():
