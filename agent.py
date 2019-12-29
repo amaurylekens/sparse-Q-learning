@@ -23,7 +23,6 @@ class Agent:
 
         """
         return the agent's choice of action for a particular state
-
         :param state: the state of the game
         :param epsilon: e-greedy parameter
         :return: the agent's choice of action
@@ -55,6 +54,7 @@ class Agent:
             a_t = np.random.choice(max_index, p=p)
 
         return a_t
+            
 
     def compute_rho_update(self, reward, state, action,
                            next_state, next_action, alpha, gamma):
