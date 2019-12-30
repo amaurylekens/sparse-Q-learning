@@ -40,7 +40,7 @@ class NaiveBestJointAction():
                 if rule_valided:
                     count += rule["rho"]
             counts.append(count)
-
+        
         # return the joint action with the best reward
         max_index = [i for i, j in enumerate(counts)
                      if j == max(counts)]

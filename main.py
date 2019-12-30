@@ -181,7 +181,8 @@ def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
     run_times = []  # store the list of ratios for each run
     for run in range(n_run):
 
-        print("run : {}".format(run))
+        if verbose:
+            print("run : {}".format(run))
         
         # create a specific context graph and add rules
         n_actions = {0:5, 1:5}
@@ -190,11 +191,23 @@ def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
         for rule in rules:
             graph.add_rule(rule)
 
-        times = []  # store capture time for each tests in a run 
+        
+        #if verbose:
+         #   print("time to test !")
+
+        times = []  # store capture time for each tests in a run
+        #time = make_capture_test(graph, initial_states, grid, verbose)
+        #times.append(time) 
+        #if verbose:
+         #   print("Test results :")
+          #  print("mean capture time : {}".format(time))
+
         for i in range(n_interval):
             graph = run_episodes(size_interval, grid, graph, verbose, offset=size_interval*i)
-            print("time to test !")
-            time = make_capture_test(graph, initial_states, grid)
+            if verbose:
+                print("time to test !")
+
+            time = make_capture_test(graph, initial_states, grid, verbose)
             times.append(time)
 
             if verbose:
@@ -203,17 +216,18 @@ def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
 
 
         
-        run_times.append(ratios)
+        run_times.append(times)
 
     # average the results over the runs
     avg = [float(sum(col))/len(col) for col in zip(*run_times)]
-    episode = np.arange(0, n_episode, interval).tolist()
+    print(avg)
+    episode = np.arange(0, n_episode + size_interval, size_interval).tolist()
+    print(episode)
 
     plt.plot(episode, avg);
     plt.xlabel("learning episode")
     plt.ylabel("capture/episode")
     plt.title("Evolution of cooperation")
-    plt.show()
     plt.savefig('test.png')
 
 
@@ -226,11 +240,13 @@ def run_episodes(n_episode, grid, graph, verbose=False, offset=0):
     prey = Prey(5)
 
     # learning parameters
-    alpha = 0.3
     gamma = 0.9
     epsilon = 0.2
+    #alpha = 0.3
 
     for episode in range(n_episode):
+
+        alpha = 1000/(1000+episode+offset)
 
         if verbose:
             print("episode : {}".format(episode + offset))
@@ -288,7 +304,7 @@ def run_episodes(n_episode, grid, graph, verbose=False, offset=0):
 
     return graph
 
-def make_capture_test(graph, initial_states, grid):
+def make_capture_test(graph, initial_states, grid, verbose=False):
     
     ncol, nrow = grid
     capture_times = []
@@ -301,7 +317,8 @@ def make_capture_test(graph, initial_states, grid):
         for j in range(5):
             game = Game(initial_state, ncol, nrow)
 
-            print("test {}/{}".format(test_count, 5*len(initial_states)))
+            if verbose:
+                print("test {}/{}".format(test_count, 5*len(initial_states)))
             
             capture = False
             capture_time = 0
@@ -322,9 +339,10 @@ def make_capture_test(graph, initial_states, grid):
                 capture_time += 1
             capture_times.append(capture_time)
 
-            sys.stdout.write('\x1b[1A')
-            sys.stdout.write('\x1b[2K')
-            test_count += 1
+            if verbose:
+                sys.stdout.write('\x1b[1A')
+                sys.stdout.write('\x1b[2K')
+                test_count += 1
                 
     mean_capture_time = mean(capture_times)
     return mean_capture_time

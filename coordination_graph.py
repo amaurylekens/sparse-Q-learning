@@ -33,13 +33,15 @@ class CoordinationGraph():
         :param current_state: state of the game
         """
 
-        # select rule which corresponds to the current state
-        current_rules = []
-        for rule in self.rules.values():
-            if rule["state"] == current_state:
-                current_rules.append(rule)
+        # select rule which corresponds to the current state for each agent
+        rules = []
+        for i in range(2):
+            agent_rules = self.get_rules_with_agent(i, current_state)
+            for agent_rule in agent_rules:
+                if agent_rule not in rules:
+                    rules.append(agent_rule)
 
-        naive = NaiveBestJointAction(self.n_actions, current_rules)
+        naive = NaiveBestJointAction(self.n_actions, rules)
 
         j_action = naive.compute_best_j_action()
 
