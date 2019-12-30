@@ -18,6 +18,7 @@ from prey import Prey
 n_actions = {0:5, 1:5}
 actions_map = {0: (1,0), 1:(0,1), 2:(-1,0), 3:(0,-1), 4:(0,0)}
 
+
 class Main(object):
 
     def __init__(self):
@@ -31,7 +32,7 @@ The commands are:
    test      Test the performance of the learning
 ''')
         parser.add_argument('mode', help='mode to run')
-        
+
         # check the mode
         args = parser.parse_args(sys.argv[1:2])
         if not hasattr(self, args.mode):
@@ -45,12 +46,12 @@ The commands are:
         # manage the arguments
         parser = argparse.ArgumentParser(
             description='Let the agents learn a policy during n episodes')
-        parser.add_argument('directory', 
+        parser.add_argument('directory',
             help="directory to store the rules file")
         parser.add_argument('-e', help="number of episode", default=100000, type=int)
         parser.add_argument('-g', help="grid size", default=4, type=int)
         parser.add_argument('-v', '--verbose', action='store_true')
-        
+
         args = parser.parse_args(sys.argv[2:])
         print('Running learn mode, episode={}, grid={}'.format(args.e, args.g))
 
@@ -67,7 +68,7 @@ The commands are:
             description='Play the game with a learned policy')
         parser.add_argument('directory', help="directory of the rules file")
         parser.add_argument('-g', help="grid size", default=4, type=int)
-        
+
         args = parser.parse_args(sys.argv[2:])
         print('Running play mode, grid={}, directory={}'.format(args.g, args.directory))
 
@@ -75,7 +76,7 @@ The commands are:
         grid = (args.g, args.g)
         file = "{}_{}_grid.json".format(args.g, args.g)
         path = "{}/{}".format(args.directory, file)
-        
+
         # check if there is a good rules file, if there is let's play
         if file in os.listdir("./{}".format(args.directory)):
             play_mode(grid, path)
@@ -89,15 +90,15 @@ The commands are:
         parser.add_argument('-r', help="number of run", default=25, type=int)
         parser.add_argument('-g', help="grid size", default=4, type=int)
         parser.add_argument('-v', '--verbose', action='store_true')
-        
+
         args = parser.parse_args(sys.argv[2:])
-        print('Running test mode, grid={}, run={}, episode{}'.format(args.g, 
+        print('Running test mode, grid={}, run={}, episode{}'.format(args.g,
                                                                      args.r,
                                                                      args.e))
 
         # run the test mode with the arguments
         grid = (args.g, args.g)
-        n_episode = args.e 
+        n_episode = args.e
         n_run = args.r
         verbose = args.verbose
         test_mode(n_episode, n_run, grid, verbose)
@@ -113,8 +114,8 @@ def learn_mode(n_episode, grid, directory, verbose=False):
 
     # make n episodes
     graph = run_episodes(n_episode, grid, graph, verbose)
-    
-    file_name = "{}_{}_grid".format(ncol, nrow)
+
+    file_name = "{}_{}_grid".format(grid, grid)
     graph.save_rules(directory, file_name)
 
 
@@ -137,20 +138,15 @@ def play_mode(grid, path):
 
     while True:
         # get the current state
-        state = copy.copy(game.states)
+        state = copy.copy(game.predators)
 
         # compute the action of the predators
         j_action = dict()
         for i, predator in enumerate(predators):
             j_action[i] = actions_map[predator.get_action_choice(state, 0.2)]
 
-        # play a episode
+        # play a round
         game.play(j_action)
-
-        # move the prey on a free neighbor cell
-        free_cells = game.get_free_neighbor_cells()
-        action = prey.get_action_choice(free_cells)
-        game.play_prey(action)
 
         # print grid
         game.print()
@@ -158,11 +154,12 @@ def play_mode(grid, path):
         choice = ""
 
         while choice != "s" and choice != "n":
-            choice = input("n -> next episode, s -> stop : ")
+            choice = input("n -> next round, s -> stop : ")
             print(choice)
 
         if choice == "s":
             break
+
 
 def test_mode(n_episode, n_run, grid, verbose=False):
 
@@ -181,7 +178,7 @@ def test_mode(n_episode, n_run, grid, verbose=False):
 
     run_times = []  # store the list of ratios for each run
     for run in range(n_run):
-        
+
         # create a specific context graph and add rules
         n_actions = {0:5, 1:5}
         rules = rules_generator(grid)
@@ -199,14 +196,14 @@ def test_mode(n_episode, n_run, grid, verbose=False):
                 print("run : {}".format(run+1))
                 print("step {}/100".format(i+1))
                 print("mean capture time : {}".format(time))
-        
+
         run_times.append(ratios)
 
     # average the results over the runs
     avg = [float(sum(col))/len(col) for col in zip(*run_times)]
     episode = np.arange(0, n_episode, interval).tolist()
 
-    plt.plot(episode, avg);
+    plt.plot(episode, avg)
     plt.xlabel("learning episode")
     plt.ylabel("capture/episode")
     plt.title("Evolution of cooperation")
@@ -256,7 +253,7 @@ def run_episodes(n_episode, grid, graph, verbose=False):
         rules_id = []
         for i, predator in enumerate(predators):
             predator.compute_rho_update(reward[i], state, j_action,
-                                        next_state, next_j_action, alpha, gamma) 
+                                        next_state, next_j_action, alpha, gamma)
         for predator in predators:
             predator.make_rho_update()
 
@@ -267,8 +264,9 @@ def run_episodes(n_episode, grid, graph, verbose=False):
 
     return graph
 
+
 def make_capture_test(graph, initial_states, grid):
-    
+
     ncol, nrow = grid
     capture_times = []
     agents = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
@@ -278,7 +276,7 @@ def make_capture_test(graph, initial_states, grid):
     for initial_state in initial_states:
         for i in range(5):
             game = Game(initial_state, ncol, nrow)
-            
+
             capture = False
             episode = 0
             while not capture:
@@ -297,17 +295,19 @@ def make_capture_test(graph, initial_states, grid):
 
                 episode += 1
             capture_times.append(episode)
-                
+
     mean_capture_time = mean(capture_times)
     return mean_capture_time
+
 
 def inv_map(action_to_map):
     for action_id, action in actions_map.items():
         if action_to_map == action:
             return action_id
 
+
 def nth_root(a, n):
-   root = a ** (1/n) 
+   root = a ** (1/n)
    return root
 
 
