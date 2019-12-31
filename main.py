@@ -1,13 +1,14 @@
-#!/anaconda3/bin python3
-
 import os
 import sys
+import json
 import copy
 import random
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from statistics import mean
+from multiprocessing import Process, Manager
+from itertools import repeat
 
 from coordination_graph import CoordinationGraph
 from rules_generator import rules_generator
@@ -192,15 +193,15 @@ def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
             graph.add_rule(rule)
 
         
-        #if verbose:
-         #   print("time to test !")
+        if verbose:
+            print("time to test !")
 
         times = []  # store capture time for each tests in a run
-        #time = make_capture_test(graph, initial_states, grid, verbose)
-        #times.append(time) 
-        #if verbose:
-         #   print("Test results :")
-          #  print("mean capture time : {}".format(time))
+        time = make_capture_test(graph, initial_states, grid, verbose)
+        times.append(time) 
+        if verbose:
+            print("Test results :")
+            print("mean capture time : {}".format(time))
 
         for i in range(n_interval):
             graph = run_episodes(size_interval, grid, graph, verbose, offset=size_interval*i)
@@ -220,15 +221,17 @@ def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
 
     # average the results over the runs
     avg = [float(sum(col))/len(col) for col in zip(*run_times)]
-    print(avg)
     episode = np.arange(0, n_episode + size_interval, size_interval).tolist()
-    print(episode)
 
     plt.plot(episode, avg);
     plt.xlabel("learning episode")
     plt.ylabel("capture/episode")
     plt.title("Evolution of cooperation")
     plt.savefig('test.png')
+
+    data = {"avg": avg, "episode": episode}
+    with open('data.json', 'w') as outfile:
+         json.dump(data, outfile)
 
 
 def run_episodes(n_episode, grid, graph, verbose=False, offset=0):
@@ -311,15 +314,10 @@ def make_capture_test(graph, initial_states, grid, verbose=False):
     agents = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
     prey = Prey(5)
 
-    # test 5 times for all random initial states
-    test_count = 1
-    for i, initial_state in enumerate(initial_states):
-        for j in range(5):
-            game = Game(initial_state, ncol, nrow)
+    def f(capture_times, states):
 
-            if verbose:
-                print("test {}/{}".format(test_count, 5*len(initial_states)))
-            
+        for state in states:
+            game = Game(state, ncol, nrow)
             capture = False
             capture_time = 0
             while not capture:
@@ -337,15 +335,27 @@ def make_capture_test(graph, initial_states, grid, verbose=False):
                 game.play_prey(action)
 
                 capture_time += 1
+
             capture_times.append(capture_time)
 
-            if verbose:
-                sys.stdout.write('\x1b[1A')
-                sys.stdout.write('\x1b[2K')
-                test_count += 1
+    # test 5 times for all random initial states
+    args = [x for initial_state in initial_states for x in repeat(initial_state, 5)]
+
+    with Manager() as manager:
+        capture_times = manager.list()  # <-- can be shared between processes.
+        processes = []
+        N_PROCESS = 10
+        args_by_process = int(len(args)/N_PROCESS)
+        for i in range(args_by_process):
+            arg = args[(i*args_by_process):((i*args_by_process)+args_by_process)]
+            p = Process(target=f, args=(capture_times,arg)) 
+            p.start()
+            processes.append(p)
+        for p in processes:
+            p.join()
                 
-    mean_capture_time = mean(capture_times)
-    return mean_capture_time
+        mean_capture_time = mean(capture_times)
+        return mean_capture_time
 
 def inv_map(action_to_map):
     for action_id, action in actions_map.items():
