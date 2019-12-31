@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import copy
+import time
 import random
 import argparse
 import numpy as np
@@ -227,10 +228,10 @@ def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
     plt.xlabel("learning episode")
     plt.ylabel("capture/episode")
     plt.title("Evolution of cooperation")
-    plt.savefig('test.png')
+    plt.savefig('images/plots/{}_{}_grid.png'.format(nrow, ncol))
 
     data = {"avg": avg, "episode": episode}
-    with open('data.json', 'w') as outfile:
+    with open('json/{}_{}_grid.json'.format(nrow, ncol), 'w') as outfile:
          json.dump(data, outfile)
 
 
@@ -337,6 +338,7 @@ def make_capture_test(graph, initial_states, grid, verbose=False):
                 capture_time += 1
 
             capture_times.append(capture_time)
+        time.sleep(0.002)
 
     # test 5 times for all random initial states
     args = [x for initial_state in initial_states for x in repeat(initial_state, 5)]
@@ -344,7 +346,7 @@ def make_capture_test(graph, initial_states, grid, verbose=False):
     with Manager() as manager:
         capture_times = manager.list()  # <-- can be shared between processes.
         processes = []
-        N_PROCESS = 10
+        N_PROCESS = 8
         args_by_process = int(len(args)/N_PROCESS)
         for i in range(args_by_process):
             arg = args[(i*args_by_process):((i*args_by_process)+args_by_process)]
