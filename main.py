@@ -8,7 +8,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from statistics import mean
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Manager, Lock
 from itertools import repeat
 
 from coordination_graph import CoordinationGraph
@@ -168,7 +168,40 @@ def play_mode(grid, path):
 
 def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
     
-    n_interval = int(n_episode/size_interval)
+    def f_run(run_times, initial_states, size_interval, 
+              n_episode, line_to_up, run, lock, verbose):
+        
+        # create a specific context graph and add rules
+        n_actions = {0:5, 1:5}
+        rules = rules_generator(grid)
+        graph = CoordinationGraph(n_actions)
+        for rule in rules:
+            graph.add_rule(rule)
+    
+        n_interval = int(n_episode/size_interval)
+
+        times = []  # store capture time for each tests in a run
+        time = make_capture_test(graph, initial_states, grid, verbose)
+        times.append(time) 
+
+        for i in range(n_interval):
+
+            graph = run_episodes(size_interval, grid, graph, verbose, offset=size_interval*i)
+            time = make_capture_test(graph, initial_states, grid, verbose)
+            times.append(time)
+
+            if verbose:
+                lock.acquire()
+                for line in range(line_to_up):
+                    sys.stdout.write("\033[F")
+                sys.stdout.write("\033[K")
+                sys.stdout.write("run {} : {} %".format((run+1), ((i+1)/n_interval)*100))
+                for line in range(line_to_up):
+                    print("\r")
+                lock.release()
+
+        run_times.append(times)
+
 
     # generate 100 random initial game states
     ncol, nrow = grid
@@ -180,59 +213,38 @@ def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
     indexes = [random.randint(0, (len(all_states)-1)) for i in range(100)]
     initial_states = [all_states[i] for i in indexes]
 
-    run_times = []  # store the list of ratios for each run
-    for run in range(n_run):
 
-        if verbose:
-            print("run : {}".format(run))
-        
-        # create a specific context graph and add rules
-        n_actions = {0:5, 1:5}
-        rules = rules_generator(grid)
-        graph = CoordinationGraph(n_actions)
-        for rule in rules:
-            graph.add_rule(rule)
-
-        
-        if verbose:
-            print("time to test !")
-
-        times = []  # store capture time for each tests in a run
-        time = make_capture_test(graph, initial_states, grid, verbose)
-        times.append(time) 
-        if verbose:
-            print("Test results :")
-            print("mean capture time : {}".format(time))
-
-        for i in range(n_interval):
-            graph = run_episodes(size_interval, grid, graph, verbose, offset=size_interval*i)
-            if verbose:
-                print("time to test !")
-
-            time = make_capture_test(graph, initial_states, grid, verbose)
-            times.append(time)
-
-            if verbose:
-                print("Test results :")
-                print("mean capture time : {}".format(time))
+    with Manager() as manager:
+        run_times= manager.list()  # <-- can be shared between processes.
+        processes = []
+        N_PROCESS = 8
+        lock = Lock()
+        for run in range(n_run):
+            p = Process(target=f_run, args=(run_times, initial_states, 
+                                            size_interval, n_episode, 
+                                            (n_run-run), run, lock, verbose))
+            if verbose: 
+                print("run {} : {} %".format((run+1), 0))
+            p.start()
+            processes.append(p)
+        for p in processes:
+            p.join()
 
 
-        
-        run_times.append(times)
+        # average the results over the runs
+        avg = [float(sum(col))/len(col) for col in zip(*run_times)]
+        episode = np.arange(0, n_episode + size_interval, size_interval).tolist()
 
-    # average the results over the runs
-    avg = [float(sum(col))/len(col) for col in zip(*run_times)]
-    episode = np.arange(0, n_episode + size_interval, size_interval).tolist()
 
-    plt.plot(episode, avg);
-    plt.xlabel("learning episode")
-    plt.ylabel("capture/episode")
-    plt.title("Evolution of cooperation")
-    plt.savefig('images/plots/{}_{}_grid.png'.format(nrow, ncol))
+        plt.plot(episode, avg);
+        plt.xlabel("learning episode")
+        plt.ylabel("capture/episode")
+        plt.title("Evolution of cooperation")
+        plt.savefig('images/plots/{}_{}_grid.png'.format(nrow, ncol))
 
-    data = {"avg": avg, "episode": episode}
-    with open('json/{}_{}_grid.json'.format(nrow, ncol), 'w') as outfile:
-         json.dump(data, outfile)
+        data = {"avg": avg, "episode": episode}
+        with open('json/{}_{}_grid.json'.format(nrow, ncol), 'w') as outfile:
+             json.dump(data, outfile)
 
 
 def run_episodes(n_episode, grid, graph, verbose=False, offset=0):
@@ -252,16 +264,13 @@ def run_episodes(n_episode, grid, graph, verbose=False, offset=0):
 
         alpha = 1000/(1000+episode+offset)
 
-        if verbose:
-            print("episode : {}".format(episode + offset))
-
         # create a game
         game = Game({0:(1,0), 1:(0,1)}, ncol, nrow)
         game.random_position()
 
         capture = False
         round_game = 1
-        print("round : {}".format(round_game))
+
         while not capture:
             # get the current state
             state = copy.copy(game.states)
@@ -293,19 +302,6 @@ def run_episodes(n_episode, grid, graph, verbose=False, offset=0):
 
             round_game += 1
 
-            # update printed line
-            if verbose:
-                sys.stdout.write('\x1b[1A')
-                sys.stdout.write('\x1b[2K')
-                print("round : {}".format(round_game))
-
-        sys.stdout.write('\x1b[1A')
-        sys.stdout.write('\x1b[2K')
-        sys.stdout.write('\x1b[1A')
-        sys.stdout.write('\x1b[2K')
-
-    print("episode : {} -> stop".format(episode + offset))
-
     return graph
 
 def make_capture_test(graph, initial_states, grid, verbose=False):
@@ -315,49 +311,35 @@ def make_capture_test(graph, initial_states, grid, verbose=False):
     agents = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
     prey = Prey(5)
 
-    def f(capture_times, states):
+   
+    capture_times = []
+    for state in initial_states:
+        game = Game(state, ncol, nrow)
+        capture = False
+        capture_time = 0
+        while not capture:
+            state = copy.copy(game.states)
 
-        for state in states:
-            game = Game(state, ncol, nrow)
-            capture = False
-            capture_time = 0
-            while not capture:
-                state = copy.copy(game.states)
+            j_action = dict()
+            for i, agent in enumerate(agents):
+               j_action[i] = actions_map[agent.get_action_choice(state, 0.2)]
 
-                j_action = dict()
-                for i, agent in enumerate(agents):
-                   j_action[i] = actions_map[agent.get_action_choice(state, 0.2)]
+            _, _, capture = game.play(j_action)
 
-                _, _, capture = game.play(j_action)
+            # move the prey on a free neighbor cell
+            free_cells = game.get_free_neighbor_cells()
+            action = prey.get_action_choice(free_cells)
+            game.play_prey(action)
 
-                # move the prey on a free neighbor cell
-                free_cells = game.get_free_neighbor_cells()
-                action = prey.get_action_choice(free_cells)
-                game.play_prey(action)
+            capture_time += 1
 
-                capture_time += 1
+        capture_times.append(capture_time)
 
-            capture_times.append(capture_time)
-        time.sleep(0.002)
+    mean_capture_time = mean(capture_times)
+    
+    return mean_capture_time
+        
 
-    # test 5 times for all random initial states
-    args = [x for initial_state in initial_states for x in repeat(initial_state, 5)]
-
-    with Manager() as manager:
-        capture_times = manager.list()  # <-- can be shared between processes.
-        processes = []
-        N_PROCESS = 8
-        args_by_process = int(len(args)/N_PROCESS)
-        for i in range(args_by_process):
-            arg = args[(i*args_by_process):((i*args_by_process)+args_by_process)]
-            p = Process(target=f, args=(capture_times,arg)) 
-            p.start()
-            processes.append(p)
-        for p in processes:
-            p.join()
-                
-        mean_capture_time = mean(capture_times)
-        return mean_capture_time
 
 def inv_map(action_to_map):
     for action_id, action in actions_map.items():
