@@ -259,11 +259,11 @@ def run_episodes(n_episode, grid, graph, verbose=False, offset=0):
     # learning parameters
     gamma = 0.9
     epsilon = 0.2
-    #alpha = 0.3
+    alpha = 0.3
 
     for episode in range(n_episode):
 
-        alpha = 1000/(1000+episode+offset)
+        #alpha = 1000/(1000+episode+offset)
 
         # create a game
         game = Game({0:(1,0), 1:(0,1)}, ncol, nrow)
