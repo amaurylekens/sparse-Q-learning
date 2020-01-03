@@ -1,26 +1,26 @@
 import random
 import numpy as np
 
+from actions import Actions
+from rules import Rules
+
 
 class Agent:
-    def __init__(self, id, coord_graph, n_action):
+    def __init__(self, pred_id, rules: Rules):
 
         """
         create a agent with a Boltzmann action selection
         and with sparse Q-learning
 
-        :param agent_id: id of the agent
-        :coord_graph: context-specific coordination graphe
-        :n_action: number of actions choice
+        :param pred_id: id of the agent
+        :rules: rules
         """
 
-        self.id = id
-        self.coord_graph = coord_graph
-        self.n_action = n_action
+        self.pred_id = pred_id
+        self.rules = rules
         self.rho_update = {}
 
     def get_action_choice(self, state, epsilon):
-
         """
         return the agent's choice of action for a particular state
 
@@ -30,40 +30,33 @@ class Agent:
         """
 
         # e-greedy
-        if (random.uniform(0, 1) < epsilon):
-            a_t = random.randint(0, self.n_action-1)
+        if random.random() < epsilon:
+            return random.choice(Actions.actions)
         else:
             # recuperate all rules for the current state where the agent in involved
-            rules = self.coord_graph.get_rules_with_agent(self.id, state)
+            rules = self.rules.get_rules_with_agent(self.pred_id, state)
 
-            # compute the Q_t for each joint_action 
-            j_actions = [{0:i, 1:j} for i in range(self.n_action) for j in range(self.n_action)]
-            Qs_t = [0]*len(j_actions)
-            for rule in rules:
-                for j_action in j_actions:
-                    rule_validated = True
-                    for agent_id, action in rule["actions"].items():
-                        if j_action[agent_id] != action: 
-                            rule_validated = False
-                            break
-                    if rule_validated:
-                        index = j_actions.index(j_action)
-                        Qs_t[index] += rule["rho"]/len(rule["actions"])
+            actions = [rule.actions for rule in rules]
+            q_values = [rule.scaled_value() for rule in rules]
 
-                else:
-                    j_actions.append(rule["actions"])
-                    Qs_t.append(rule["rho"]/len(rule["actions"]))
+            # maximum q value
+            max_q_value = max(q_values)
+            # best actions
+            best_actions = [a for a, q in zip(actions, q_values) if q == max_q_value]
+            # choose uniformly the best action
+            selected = random.choice(best_actions)
+            return selected[self.pred_id]
 
-            # find index of the max Q-values
-            max_index = [i for i, j in enumerate(Qs_t)
-                         if j == max(Qs_t)]
+    def q_value(self, state):
+        """
+        return the Q value of a state
+        """
+        rules = self.rules.get_rules_with_agent(self.pred_id, state)
 
-            # choose one of the max-index with uniform distribution
-            p = [1/len(max_index) for i in range(len(max_index))]
-            sel_index = np.random.choice(max_index, p=p)
-            a_t = j_actions[sel_index][self.id]
+        q_values = [rule.scaled_value() for rule in rules]
 
-        return a_t
+        # maximum q value
+        return max(q_values)
             
 
     def compute_rho_update(self, reward, state, action,
@@ -83,12 +76,12 @@ class Agent:
         """
 
         # retrieve the rule that correspond to the action-state
-        rule = self.coord_graph.get_rules_with_agent(self.id,
+        rule = self.coord_graph.get_rules_with_agent(self.pred_id,
                                                      state,
                                                      action)[0]
 
         # retrieve the rule that correspond to the next action-state
-        rule_next = self.coord_graph.get_rules_with_agent(self.id,
+        rule_next = self.coord_graph.get_rules_with_agent(self.pred_id,
                                                           next_state,
                                                           next_action)[0]
 

@@ -3,17 +3,14 @@ import json
 from naive_best_joint_action import NaiveBestJointAction
 
 
-class CoordinationGraph():
-    def __init__(self, n_actions):
+class CoordinationGraph:
+    def __init__(self):
 
         """
-        object that represents the specific context coordination graphe
-
-        :param  n_actions: dict with the number of actions for each agent
+        object that represents the specific context coordination graph
         """
 
-        self.rules = dict()
-        self.n_actions = n_actions
+        self._rules = dict()
 
     def add_rule(self, rule):
 

@@ -138,7 +138,7 @@ def play_mode(grid, path):
 
     while True:
         # get the current state
-        state = copy.copy(game.predators)
+        state = copy.copy(game._state)
 
         # compute the action of the predators
         j_action = dict()
