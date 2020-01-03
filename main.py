@@ -315,8 +315,8 @@ def make_capture_test(graph, initial_states, grid, verbose=False):
 
    
     capture_times = []
-    for state in initial_states:
-        game = Game(state, ncol, nrow)
+    for initial_state in initial_states:
+        game = Game(copy.copy(initial_state), ncol, nrow)
         capture = False
         capture_time = 0
         while not capture:
