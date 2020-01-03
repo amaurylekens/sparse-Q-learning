@@ -1,7 +1,8 @@
 from actions import Actions
 from agent import Agent
 from game import Game
-from rules import Rules, Rule, generate_game_rules
+from rules import Rules, Rule
+from generate_game_rules import generate_game_rules
 
 
 def play_episode(game, predators, epsilon):

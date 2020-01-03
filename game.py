@@ -10,7 +10,6 @@ class Game:
         """
         a prey-predators game
 
-        :param initial_pred_states: initial states of the predators
         :param nrow: number of row of the game grid
         :param ncol: number of col of the game grid
         """
