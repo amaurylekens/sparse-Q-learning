@@ -232,7 +232,7 @@ def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
         plt.savefig('images/plots/IL_{}_{}_grid.png'.format(nrow, ncol))
 
         data = {"avg": avg, "episode": episode}
-        with open('json/{}_{}_grid.json'.format(nrow, ncol), 'w') as outfile:
+        with open('json/IL_{}_{}_grid.json'.format(nrow, ncol), 'w') as outfile:
              json.dump(data, outfile)
 
 def run_episodes(Q_table_0, Q_table_1, n_episode, grid, verbose=False, offset=0):
