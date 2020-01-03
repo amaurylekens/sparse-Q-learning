@@ -116,6 +116,7 @@ def learn_mode(n_episode, grid, directory, verbose=False):
     # make n episodes
     graph = run_episodes(n_episode, grid, graph, verbose)
     
+    ncol, nrow = grid
     file_name = "{}_{}_grid".format(ncol, nrow)
     graph.save_rules(directory, file_name)
 

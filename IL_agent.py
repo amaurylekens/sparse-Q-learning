@@ -3,12 +3,15 @@ import numpy as np
 
 
 class ILAgent:
-    def __init__(self, id, n_action, ncol, nrow):
+    def __init__(self, id, n_action, ncol, nrow, Q_t):
         self.id = id
         self.n_action = n_action
-        self.Q_t = {repr(((x1, y1), (x2, y2))) : [0]*n_action for x1 in range(ncol) for y1 in range(nrow) for x2 in range(nrow) for y2 in range(ncol) if not ((x1==x2 and y1==y2) or (x1==0 and y1==0) or (x2==0 and y2==0)) }
-        # print(len(self.Q_t)*5)   # = 48510 with gridsize 10
-        
+        self.Q_t = Q_t
+
+    @staticmethod
+    def get_init_Q_t(n_action, ncol, nrow):
+        return {repr(((x1, y1), (x2, y2))) : [0]*n_action for x1 in range(ncol) for y1 in range(nrow) for x2 in range(nrow) for y2 in range(ncol) if not ((x1==x2 and y1==y2) or (x1==0 and y1==0) or (x2==0 and y2==0)) }
+
     def get_action_choice(self, state, epsilon):
 
         """
