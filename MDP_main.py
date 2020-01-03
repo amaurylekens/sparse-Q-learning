@@ -203,7 +203,7 @@ def make_capture_test(Q_table, initial_states, grid, verbose=False):
         while not capture:
             state = state_to_string(copy.copy(game.states))
             j_action = dict()
-            joint_action = agent.get_action_choice(state, 0.2) # TODO : Why not eps = 0
+            joint_action = agent.get_action_choice(state, 0)
             j_action[0] = actions_map[joint_action[0]]
             j_action[1] = actions_map[joint_action[1]]
             

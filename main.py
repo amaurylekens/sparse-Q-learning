@@ -145,7 +145,7 @@ def play_mode(grid, path):
         # compute the action of the predators
         j_action = dict()
         for i, predator in enumerate(predators):
-            j_action[i] = actions_map[predator.get_action_choice(state, 0.2)]
+            j_action[i] = actions_map[predator.get_action_choice(state, 0)]
 
         # play a episode
         game.play(j_action)
@@ -323,7 +323,7 @@ def make_capture_test(graph, initial_states, grid, verbose=False):
 
             j_action = dict()
             for i, agent in enumerate(agents):
-               j_action[i] = actions_map[agent.get_action_choice(state, 0.2)]
+               j_action[i] = actions_map[agent.get_action_choice(state, 0)]
 
             _, _, capture = game.play(j_action)
 

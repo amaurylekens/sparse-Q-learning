@@ -302,7 +302,7 @@ def make_capture_test(Q_table_0, Q_table_1, initial_states, grid, verbose=False)
             state = state_to_string(copy.copy(game.states))
             j_action = dict()
             for i, agent in enumerate(agents):
-               j_action[i] = actions_map[agent.get_action_choice(state, 0.2)] # TODO : Why not eps = 0
+               j_action[i] = actions_map[agent.get_action_choice(state, 0)]
 
             _, _, capture = game.play(j_action)
 
