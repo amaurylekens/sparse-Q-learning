@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 import random
 from multiprocessing import Process, Manager, Lock
 
-from IL_agent import ILAgent
 from game import Game
 from prey import Prey
+from MDP_agent import MDPAgent
 
-n_actions = {0:5, 1:5}
+n_actions = 5
 actions_map = {0: (1,0), 1:(0,1), 2:(-1,0), 3:(0,-1), 4:(0,0)}
 
 class Main:
@@ -24,8 +24,6 @@ class Main:
             usage='''main <command> [<args>]
 
 The commands are:
-learn     Let the agents learn a policy during n episodes
-play      Play the game with a learned policy
 test      Test the performance of the learning
 ''')
         parser.add_argument('mode', help='mode to run')
@@ -38,47 +36,6 @@ test      Test the performance of the learning
             exit(1)
         # invoke method with same name
         getattr(self, args.mode)()
-
-    def learn(self):
-        # manage the arguments
-        parser = argparse.ArgumentParser(
-            description='Let the agents learn a policy during n episodes')
-        parser.add_argument('directory', 
-            help="directory to store the q-tables file")
-        parser.add_argument('-e', help="number of episode", default=100000, type=int)
-        parser.add_argument('-g', help="grid size", default=4, type=int)
-        parser.add_argument('-v', '--verbose', action='store_true')
-        
-        args = parser.parse_args(sys.argv[2:])
-        print('Running learn mode, episode={}, grid={}'.format(args.e, args.g))
-
-        # run the learn mode with the arguments
-        n_episode = args.e
-        grid = (args.g, args.g)
-        directory = args.directory
-        verbose = args.verbose
-        learn_mode(n_episode, grid, directory, verbose)
-
-    def play(self):
-        # manage the arguments
-        parser = argparse.ArgumentParser(
-            description='Play the game with a learned policy')
-        parser.add_argument('directory', help="directory of the q-tables file")
-        parser.add_argument('-g', help="grid size", default=4, type=int)
-        
-        args = parser.parse_args(sys.argv[2:])
-        print('Running play mode, grid={}, directory={}'.format(args.g, args.directory))
-
-        # run the play mode with the arguments
-        grid = (args.g, args.g)
-        file = "IL_{}_{}_grid.json".format(args.g, args.g)
-        path = "{}/{}".format(args.directory, file)
-        
-        # check if there is a good q-tables file, if there is let's play
-        if file in os.listdir("./{}".format(args.directory)):
-            play_mode(grid, path)
-        else:
-            print("no q-tables file in this directory for this grid size")
 
     def test(self):
         parser = argparse.ArgumentParser(
@@ -100,80 +57,24 @@ test      Test the performance of the learning
         verbose = args.verbose
         test_mode(n_episode, n_run, grid, verbose)
 
-        
-
-def learn_mode(n_episode, grid, directory, verbose=False):
-    # make n episodes
-    ncol, nrow = grid
-    Q_table_0, Q_table_1 = run_episodes(ILAgent.get_init_Q_t(n_actions[0], ncol, nrow), ILAgent.get_init_Q_t(n_actions[1], ncol, nrow), n_episode, grid, verbose)
-    # save Q tables
-    file_name = "IL_{}_{}_grid".format(ncol, nrow)
-    save_tables(Q_table_0, Q_table_1, directory, file_name)
-    
-
-def play_mode(grid, path):
-    ncol, nrow = grid
-
-    # create a game
-    game = Game({0:(3,0), 1:(0,3)}, ncol, nrow)
-    game.print()
-
-    # load Q_tables
-    Q_table_0, Q_table_1 = load_tables(path)
-
-    # create predators and prey
-    predators = [ILAgent(0, n_actions[0], ncol, nrow, Q_table_0), ILAgent(1, n_actions[1], ncol, nrow, Q_table_1)]
-    prey = Prey(5)
-
-    while True:
-        # get the current state
-        state = state_to_string(copy.copy(game.states))
-
-        # compute the action of the predators
-        j_action = dict()
-        for i, predator in enumerate(predators):
-            j_action[i] = actions_map[predator.get_action_choice(state, 0)]
-
-        # play a episode
-        game.play(j_action)
-
-        # move the prey on a free neighbor cell
-        free_cells = game.get_free_neighbor_cells()
-        action = prey.get_action_choice(free_cells)
-        game.play_prey(action)
-
-        # print grid
-        game.print()
-
-        choice = ""
-
-        while choice != "s" and choice != "n":
-            choice = input("n -> next episode, s -> stop : ")
-            print(choice)
-
-        if choice == "s":
-            break
-    
 def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
     
     def f_run(run_times, initial_states, size_interval, 
               n_episode, line_to_up, run, lock, verbose):
         
-        n_actions = {0:5, 1:5}
     
         n_interval = int(n_episode/size_interval)
 
-        Q_table_0 = ILAgent.get_init_Q_t(n_actions[0], ncol, nrow)
-        Q_table_1 = ILAgent.get_init_Q_t(n_actions[1], ncol, nrow)
+        Q_table = MDPAgent.get_init_Q_t(n_actions*n_actions, ncol, nrow)
 
         times = []  # store capture time for each tests in a run
-        time = make_capture_test(Q_table_0, Q_table_1, initial_states, grid, verbose)
+        time = make_capture_test(Q_table, initial_states, grid, verbose)
         times.append(time) 
 
         for i in range(n_interval):
 
-            Q_table_0, Q_table_1 = run_episodes(Q_table_0, Q_table_1, size_interval, grid, verbose, offset=size_interval*i)
-            time = make_capture_test(Q_table_0, Q_table_1, initial_states, grid, verbose)
+            Q_table = run_episodes(Q_table, size_interval, grid, verbose, offset=size_interval*i)
+            time = make_capture_test(Q_table, initial_states, grid, verbose)
             times.append(time)
 
             if verbose:
@@ -228,17 +129,17 @@ def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
         plt.xlabel("learning episode")
         plt.ylabel("capture/episode")
         plt.title("Evolution of cooperation")
-        plt.savefig('images/plots/IL_{}_{}_grid.png'.format(nrow, ncol))
+        plt.savefig('images/plots/MDP_{}_{}_grid.png'.format(nrow, ncol))
 
         data = {"avg": avg, "episode": episode}
-        with open('json/IL_{}_{}_grid.json'.format(nrow, ncol), 'w') as outfile:
+        with open('json/MDP_{}_{}_grid.json'.format(nrow, ncol), 'w') as outfile:
              json.dump(data, outfile)
 
-def run_episodes(Q_table_0, Q_table_1, n_episode, grid, verbose=False, offset=0):
+def run_episodes(Q_table, n_episode, grid, verbose=False, offset=0):
 
     ncol, nrow = grid
     # create predators and prey
-    predators = [ILAgent(0, n_actions[0], ncol, nrow, Q_table_0), ILAgent(1, n_actions[1], ncol, nrow, Q_table_1)]
+    predator = MDPAgent(n_actions, ncol, nrow, Q_table)
     prey = Prey(5)
 
     # learning parameters
@@ -263,8 +164,9 @@ def run_episodes(Q_table_0, Q_table_1, n_episode, grid, verbose=False, offset=0)
 
             # compute the action of the predators
             j_action = dict()
-            for i, predator in enumerate(predators):
-                j_action[i] = actions_map[predator.get_action_choice(state, epsilon)]
+            joint_action = predator.get_action_choice(state, epsilon)
+            j_action[0] = actions_map[joint_action[0]]
+            j_action[1] = actions_map[joint_action[1]]
 
             # play the actions and get the reward and the next state
             next_state, reward, capture = game.play(j_action)
@@ -272,8 +174,8 @@ def run_episodes(Q_table_0, Q_table_1, n_episode, grid, verbose=False, offset=0)
             j_action = {id:inv_map(action) for id, action in j_action.items()}
 
             # make the q-table update
-            for i, predator in enumerate(predators):
-                predator.make_q_update(reward[i], state, j_action[i], next_state, alpha, gamma)
+            global_reward = reward[0] + reward[1]
+            predator.make_q_update(global_reward, state, j_action, next_state, alpha, gamma)
 
             # move the prey on a free neighbor cell
             free_cells = game.get_free_neighbor_cells()
@@ -282,13 +184,13 @@ def run_episodes(Q_table_0, Q_table_1, n_episode, grid, verbose=False, offset=0)
 
             round_game += 1
 
-    return predators[0].Q_t, predators[1].Q_t
+    return predator.Q_t
 
-def make_capture_test(Q_table_0, Q_table_1, initial_states, grid, verbose=False):
+def make_capture_test(Q_table, initial_states, grid, verbose=False):
     
     ncol, nrow = grid
     capture_times = []
-    agents = [ILAgent(0, n_actions[0], ncol, nrow, Q_table_0), ILAgent(1, n_actions[1], ncol, nrow, Q_table_1)]
+    agent = MDPAgent(n_actions, ncol, nrow, Q_table)
     prey = Prey(5)
 
    
@@ -301,9 +203,10 @@ def make_capture_test(Q_table_0, Q_table_1, initial_states, grid, verbose=False)
         while not capture:
             state = state_to_string(copy.copy(game.states))
             j_action = dict()
-            for i, agent in enumerate(agents):
-               j_action[i] = actions_map[agent.get_action_choice(state, 0.2)] # TODO : Why not eps = 0
-
+            joint_action = agent.get_action_choice(state, 0.2) # TODO : Why not eps = 0
+            j_action[0] = actions_map[joint_action[0]]
+            j_action[1] = actions_map[joint_action[1]]
+            
             _, _, capture = game.play(j_action)
 
             # move the prey on a free neighbor cell
@@ -318,38 +221,6 @@ def make_capture_test(Q_table_0, Q_table_1, initial_states, grid, verbose=False)
     mean_capture_time = mean(capture_times)
     
     return mean_capture_time
-
-def save_tables(Q_table_0, Q_table_1, directory, name):
-
-        """
-        saves the Q-tables in json format
-
-        :param directory: directory where to save
-        :param name: save file name
-        """
-
-        data = dict()
-        data[0] = Q_table_0
-        data[1] = Q_table_1
-        path = "{}/{}.json".format(directory, name)
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-
-def load_tables(path):
-
-        """
-        load the Q-tables from a json file
-
-        :param path: path to the json file
-        """
-
-        with open(path) as f:
-            data = json.load(f)
-
-        Q_table_0 = data["0"]
-        Q_table_1 = data["1"]
-
-        return Q_table_0, Q_table_1
 
 def inv_map(action_to_map):
     for action_id, action in actions_map.items():
