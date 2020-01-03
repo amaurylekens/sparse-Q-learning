@@ -210,7 +210,8 @@ def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
                   for i in range(ncol)
                   for j in range(nrow)
                   for k in range(ncol)
-                  for l in range(nrow)]
+                  for l in range(nrow)
+                  if not ((i==k and j==l) or (i==0 and j==0) or (k==0 and l==0))]
     indexes = [random.randint(0, (len(all_states)-1)) for i in range(100)]
     initial_states = [all_states[i] for i in indexes]
 
