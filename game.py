@@ -21,7 +21,6 @@ class Game:
         self.random_state([0, 1])
         self.initial_state = self._state.copy()
         self._offset = (0, 0)
-        self.event = None
         self.round = 0
 
     def play(self, pred_actions):
@@ -38,14 +37,15 @@ class Game:
         state, reward, capture = self.play_pred(pred_actions)
         return state, reward, capture
 
-    def reset(self):
+    def reset(self, random_state=False):
         """
         reset game to initial state.
         """
         self._state = self.initial_state.copy()
+        if random_state:
+            self.random_state([0, 1])
         self._offset = (0, 0)
         self.round = 0
-        self.event = None
 
     def play_pred(self, pred_actions):
         """
@@ -63,7 +63,6 @@ class Game:
 
         # if the predators collide
         if self._state[1] == self._state[0]:
-            self.event = "COLLISION"
             reward = {0: -50, 1: -50}
             # randomly position colliding predators
             self.random_state([0, 1])
@@ -77,11 +76,9 @@ class Game:
 
         # failed capture
         if self._state[0] == (0, 0) and not next_to_prey[1]:
-            self.event = "FAILED CAPTURE"
             self.random_state(0)
             return self._state, {0: -5, 1: -0.5}, False
         if self._state[1] == (0, 0) and not next_to_prey[0]:
-            self.event = "FAILED CAPTURE"
             self.random_state(1)
             return self._state, {0: -0.5, 1: -5}, False
 
@@ -89,11 +86,9 @@ class Game:
         good_capture = (self._state[0] == (0, 0) and next_to_prey[1] or
                         self._state[1] == (0, 0) and next_to_prey[0])
         if good_capture:
-            self.event = "GOOD CAPTURE"
             return self._state, {0: 37.5, 1: 37.5}, True
 
         # predators moved
-        self.event = None
         return self._state, {0: -0.5, 1: -0.5}, False
 
     def play_prey(self):
@@ -145,9 +140,6 @@ class Game:
         predator_1 = self.add_vectors(self._state[1], self._offset)
         predator_1 = predator_1[0] * self.nrow + predator_1[1]
         prey = (self._offset[0] * self.nrow + self._offset[1])
-
-        if self.event is not None:
-            print(f"EVENT: {self.event}")
 
         cell = 0
         line = "  " + "".join([" {}".format(i) for i in range(self.ncol)])

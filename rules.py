@@ -105,11 +105,16 @@ class Rules:
         max_coordination = max(coordination)
         return [rule for rule, coordination in zip(rules, coordination) if coordination == max_coordination]
 
-    def update_rule_values(self, state, j_action, rewards, q_values, future_rewards, alpha=0.3, gamma=0.9):
+    def update_rule_values(self,
+                           state: Dict[int, Tuple[int, int]],
+                           j_action: Dict[int, str],
+                           rewards: Dict[int, float],
+                           q_values: Dict[int, float],
+                           future_rewards: Dict[int, float], alpha=0.3, gamma=0.9):
         """
         update rule values
 
-        :param state git
+        :param state
         :param j_action
         :param rewards
         :param q_values
