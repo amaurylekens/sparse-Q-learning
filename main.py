@@ -1,24 +1,18 @@
-import os
-import sys
-import json
-import copy
-import time
-import random
 import argparse
-import numpy as np
-import matplotlib.pyplot as plt
-from statistics import mean
+import json
+import sys
 from multiprocessing import Process, Manager, Lock
-from itertools import repeat
+from statistics import mean
+from typing import List, Tuple
 
-from coordination_graph import CoordinationGraph
-from rules_generator import rules_generator
+import matplotlib.pyplot as plt
+import numpy as np
+
 from agent import Agent
 from game import Game
-from prey import Prey
+from generate_game_rules import generate_game_rules
+from rules import Rules
 
-n_actions = {0:5, 1:5}
-actions_map = {0: (1,0), 1:(0,1), 2:(-1,0), 3:(0,-1), 4:(0,0)}
 
 class Main(object):
 
@@ -33,7 +27,7 @@ The commands are:
    test      Test the performance of the learning
 ''')
         parser.add_argument('mode', help='mode to run')
-        
+
         # check the mode
         args = parser.parse_args(sys.argv[1:2])
         if not hasattr(self, args.mode):
@@ -47,12 +41,11 @@ The commands are:
         # manage the arguments
         parser = argparse.ArgumentParser(
             description='Let the agents learn a policy during n episodes')
-        parser.add_argument('directory', 
-            help="directory to store the rules file")
+        parser.add_argument('directory',
+                            help="directory to store the rules file")
         parser.add_argument('-e', help="number of episode", default=100000, type=int)
         parser.add_argument('-g', help="grid size", default=4, type=int)
-        parser.add_argument('-v', '--verbose', action='store_true')
-        
+
         args = parser.parse_args(sys.argv[2:])
         print('Running learn mode, episode={}, grid={}'.format(args.e, args.g))
 
@@ -60,29 +53,23 @@ The commands are:
         n_episode = args.e
         grid = (args.g, args.g)
         directory = args.directory
-        verbose = args.verbose
-        learn_mode(n_episode, grid, directory, verbose)
+        learn_mode(n_episode, grid, directory)
 
     def play(self):
         # manage the arguments
         parser = argparse.ArgumentParser(
             description='Play the game with a learned policy')
         parser.add_argument('directory', help="directory of the rules file")
+        parser.add_argument('name', help="name of the rules file")
         parser.add_argument('-g', help="grid size", default=4, type=int)
-        
+
         args = parser.parse_args(sys.argv[2:])
-        print('Running play mode, grid={}, directory={}'.format(args.g, args.directory))
+        print('Running play mode, grid={}, directory={} name={}'.format(args.g, args.directory, args.name))
 
         # run the play mode with the arguments
         grid = (args.g, args.g)
-        file = "{}_{}_grid.json".format(args.g, args.g)
-        path = "{}/{}".format(args.directory, file)
-        
-        # check if there is a good rules file, if there is let's play
-        if file in os.listdir("./{}".format(args.directory)):
-            play_mode(grid, path)
-        else:
-            print("no rule file in this directory for this grid size")
+
+        play_mode(grid, args.directory, args.name)
 
     def test(self):
         parser = argparse.ArgumentParser(
@@ -91,69 +78,62 @@ The commands are:
         parser.add_argument('-r', help="number of run", default=25, type=int)
         parser.add_argument('-g', help="grid size", default=4, type=int)
         parser.add_argument('-v', '--verbose', action='store_true')
-        
+
         args = parser.parse_args(sys.argv[2:])
-        print('Running test mode, grid={}, run={}, episode{}'.format(args.g, 
-                                                                     args.r,
-                                                                     args.e))
+        print('Running test mode, grid={}, run={}, episode={}'.format(args.g, args.r, args.e))
 
         # run the test mode with the arguments
         grid = (args.g, args.g)
-        n_episode = args.e 
+        n_episode = args.e
         n_run = args.r
         verbose = args.verbose
         test_mode(n_episode, n_run, grid, verbose)
 
 
-def learn_mode(n_episode, grid, directory, verbose=False):
+def learn_mode(n_episode, grid, directory):
+    nrow, ncol = grid
+    # create a game
+    game = Game(nrow, ncol)
 
-    # create a specific context graph and add rules
-    graph = CoordinationGraph(n_actions)
-    rules = rules_generator(grid)
-    for rule in rules:
-        graph.add_rule(rule)
+    # create a specific context graph/rules
+    rules = generate_game_rules(ncol)
 
-    # make n episodes
-    graph = run_episodes(n_episode, grid, graph, verbose)
-    
+    # create predators
+    predators = [Agent(0, rules), Agent(1, rules)]
+
+    # run n episodes
+    run_episodes(n_episode, game, rules, predators)
+
     ncol, nrow = grid
     file_name = "{}_{}_grid".format(ncol, nrow)
-    graph.save_rules(directory, file_name)
+    rules.save_rules(directory=directory, name=file_name)
 
 
-def play_mode(grid, path):
-
+def play_mode(grid, directory, file_name):
     ncol, nrow = grid
 
     # create a game
-    game = Game({0:(3,0), 1:(0,3)}, ncol, nrow)
-    game.print()
+    game = Game(ncol, nrow)
 
     # create a specific context graph and load rules
-    n_actions = {0:5, 1:5}
-    graph = CoordinationGraph(n_actions)
-    graph.load_rules(path)
+    rules = Rules()
+    rules.load_rules(directory=directory, name=file_name)
 
-    # create predators and prey
-    predators = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
-    prey = Prey(5)
+    # create predators
+    predators = [Agent(0, rules), Agent(1, rules)]
 
-    while True:
-        # get the current state
-        state = copy.copy(game.states)
+    capture = False
+
+    while not capture:
+        state = game.state
 
         # compute the action of the predators
         j_action = dict()
-        for i, predator in enumerate(predators):
-            j_action[i] = actions_map[predator.get_action_choice(state, 0)]
+        for predator in predators:
+            j_action[predator.pred_id] = predator.get_action_choice(state, 0.)
 
-        # play a episode
-        game.play(j_action)
-
-        # move the prey on a free neighbor cell
-        free_cells = game.get_free_neighbor_cells()
-        action = prey.get_action_choice(free_cells)
-        game.play_prey(action)
+        # play the actions and get the reward and the next state
+        _, _, capture = game.play(j_action)
 
         # print grid
         game.print()
@@ -167,28 +147,31 @@ def play_mode(grid, path):
         if choice == "s":
             break
 
-def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
-    
-    def f_run(run_times, initial_states, size_interval, 
+
+def test_mode(n_episode: int, n_run: int, grid: Tuple[int, int], verbose=False, size_interval: int = 500):
+    def f_run(run_times, test_games, size_interval,
               n_episode, line_to_up, run, lock, verbose):
-        
-        # create a specific context graph and add rules
-        n_actions = {0:5, 1:5}
-        rules = rules_generator(grid)
-        graph = CoordinationGraph(n_actions)
-        for rule in rules:
-            graph.add_rule(rule)
-    
-        n_interval = int(n_episode/size_interval)
+
+        # create a specific context graph/rules
+        rules = generate_game_rules(grid[0])
+
+        # create predator agents
+        predators = [Agent(0, rules), Agent(1, rules)]
+
+        # game used to run episodes
+        learn_game = Game(grid[0], grid[1])
+
+        n_interval = int(n_episode / size_interval)
 
         times = []  # store capture time for each tests in a run
-        time = make_capture_test(graph, initial_states, grid, verbose)
-        times.append(time) 
+
+        time = make_capture_test(predators, test_games)
+        times.append(time)
 
         for i in range(n_interval):
 
-            graph = run_episodes(size_interval, grid, graph, verbose, offset=size_interval*i)
-            time = make_capture_test(graph, initial_states, grid, verbose)
+            run_episodes(size_interval, learn_game, rules, predators)
+            time = make_capture_test(predators, test_games)
             times.append(time)
 
             if verbose:
@@ -196,49 +179,38 @@ def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
                 for line in range(line_to_up):
                     sys.stdout.write("\033[F")
                 sys.stdout.write("\033[K")
-                sys.stdout.write("run {} : {} %".format((run+1), ((i+1)/n_interval)*100))
+                sys.stdout.write("run {} : {} %".format((run + 1), ((i + 1) / n_interval) * 100))
                 for line in range(line_to_up):
                     print("\r")
                 lock.release()
 
         run_times.append(times)
 
-
     # generate 100 random initial game states
     ncol, nrow = grid
-    all_states = [{0: (i, j), 1: (k, l)}
-                  for i in range(ncol)
-                  for j in range(nrow)
-                  for k in range(ncol)
-                  for l in range(nrow)
-                  if not ((i==k and j==l) or (i==0 and j==0) or (k==0 and l==0))]
-    indexes = [random.randint(0, (len(all_states)-1)) for i in range(100)]
-    initial_states = [all_states[i] for i in indexes]
-
+    test_games = [Game(nrow, ncol) for _ in range(100)]
 
     with Manager() as manager:
-        run_times= manager.list()  # <-- can be shared between processes.
+        run_times = manager.list()  # <-- can be shared between processes.
         processes = []
         N_PROCESS = 8
         lock = Lock()
         for run in range(n_run):
-            p = Process(target=f_run, args=(run_times, initial_states, 
-                                            size_interval, n_episode, 
-                                            (n_run-run), run, lock, verbose))
-            if verbose: 
-                print("run {} : {} %".format((run+1), 0))
+            p = Process(target=f_run, args=(run_times, test_games,
+                                            size_interval, n_episode,
+                                            (n_run - run), run, lock, verbose))
+            if verbose:
+                print("run {} : {} %".format((run + 1), 0))
             p.start()
             processes.append(p)
         for p in processes:
             p.join()
 
-
         # average the results over the runs
-        avg = [float(sum(col))/len(col) for col in zip(*run_times)]
+        avg = [float(sum(col)) / len(col) for col in zip(*run_times)]
         episode = np.arange(0, n_episode + size_interval, size_interval).tolist()
 
-
-        plt.plot(episode, avg);
+        plt.plot(episode, avg)
         plt.xlabel("learning episode")
         plt.ylabel("capture/episode")
         plt.title("Evolution of cooperation")
@@ -246,111 +218,62 @@ def test_mode(n_episode, n_run, grid, verbose=False, size_interval=500):
 
         data = {"avg": avg, "episode": episode}
         with open('json/{}_{}_grid.json'.format(nrow, ncol), 'w') as outfile:
-             json.dump(data, outfile)
+            json.dump(data, outfile)
 
 
-def run_episodes(n_episode, grid, graph, verbose=False, offset=0):
-
-    ncol, nrow = grid
-
-    # create predators and prey
-    predators = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
-    prey = Prey(5)
-
+def run_episodes(n_episode: int, game: Game, rules: Rules, predators: List[Agent]):
     # learning parameters
     gamma = 0.9
     epsilon = 0.2
     alpha = 0.3
 
     for episode in range(n_episode):
-
-        #alpha = 1000/(1000+episode+offset)
-
-        # create a game
-        game = Game({0:(1,0), 1:(0,1)}, ncol, nrow)
-        game.random_position()
+        # reset game to a random initial state
+        game.reset(random_state=True)
 
         capture = False
-        round_game = 1
-
         while not capture:
-            # get the current state
-            state = copy.copy(game.states)
+            state = game.state
 
             # compute the action of the predators
             j_action = dict()
-            for i, predator in enumerate(predators):
-                j_action[i] = actions_map[predator.get_action_choice(state, epsilon)]
+            for predator in predators:
+                j_action[predator.pred_id] = predator.get_action_choice(state, epsilon)
 
             # play the actions and get the reward and the next state
-            next_state, reward, capture = game.play(j_action)
-            j_action = {id:inv_map(action) for id, action in j_action.items()}
+            next_state, rewards, capture = game.play(j_action)
 
-            # compute the best joint action of the next state
-            next_j_action = graph.compute_joint_action(next_state)
+            q_values = {predator.pred_id: predator.q_value(state) for predator in predators}
 
-            # compute and make the rho update
-            rules_id = []
-            for i, predator in enumerate(predators):
-                predator.compute_rho_update(reward[i], state, j_action,
-                                            next_state, next_j_action, alpha, gamma) 
-            for predator in predators:
-                predator.make_rho_update()
+            if not capture:
+                future_rewards = {predator.pred_id: predator.q_value(next_state) for predator in predators}
+            else:
+                future_rewards = {predator.pred_id: 0 for predator in predators}
 
-            # move the prey on a free neighbor cell
-            free_cells = game.get_free_neighbor_cells()
-            action = prey.get_action_choice(free_cells)
-            game.play_prey(action)
+            rules.update_rule_values(state, j_action, rewards, q_values, future_rewards, alpha, gamma)
 
-            round_game += 1
 
-    return graph
-
-def make_capture_test(graph, initial_states, grid, verbose=False):
-    
-    ncol, nrow = grid
+def make_capture_test(predators: List[Agent], test_games: List[Game]):
     capture_times = []
-    agents = [Agent(0, graph, n_actions[0]), Agent(1, graph, n_actions[1])]
-    prey = Prey(5)
-
-   
-    capture_times = []
-    for initial_state in initial_states:
-        game = Game(copy.copy(initial_state), ncol, nrow)
+    for game in test_games:
+        game.reset()
         capture = False
-        capture_time = 0
         while not capture:
-            state = copy.copy(game.states)
+            state = game.state
 
+            # compute the action of the predators
             j_action = dict()
-            for i, agent in enumerate(agents):
-               j_action[i] = actions_map[agent.get_action_choice(state, 0)]
+            for predator in predators:
+                j_action[predator.pred_id] = predator.get_action_choice(state, 0.)
 
+            # play the actions and get the reward and the next state
             _, _, capture = game.play(j_action)
 
-            # move the prey on a free neighbor cell
-            free_cells = game.get_free_neighbor_cells()
-            action = prey.get_action_choice(free_cells)
-            game.play_prey(action)
-
-            capture_time += 1
-
-        capture_times.append(capture_time)
+        capture_times.append(game.round)
 
     mean_capture_time = mean(capture_times)
-    
+
     return mean_capture_time
-        
-
-
-def inv_map(action_to_map):
-    for action_id, action in actions_map.items():
-        if action_to_map == action:
-            return action_id
-
-def nth_root(a, n):
-   root = a ** (1/n) 
-   return root
 
 
 if __name__ == '__main__':
