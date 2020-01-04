@@ -23,9 +23,9 @@ class Game:
         self._offset = (0, 0)
         self.round = 0
 
-    def play(self, pred_actions):
+    def play(self, pred_actions) -> Tuple[Dict[int, Tuple[int, int]], Dict[int, float], bool]:
         """
-        run one round of the game
+        play one round of the game
 
         :param pred_actions: dict with the predators actions
         :return states: current state of the game
@@ -33,8 +33,8 @@ class Game:
         :return capture: bool, true if the prey is caught
         """
         self.round += 1
-        self.play_prey()
-        state, reward, capture = self.play_pred(pred_actions)
+        self._play_prey()
+        state, reward, capture = self._play_pred(pred_actions)
         return state, reward, capture
 
     def reset(self, random_state=False):
@@ -47,7 +47,7 @@ class Game:
         self._offset = (0, 0)
         self.round = 0
 
-    def play_pred(self, pred_actions):
+    def _play_pred(self, pred_actions):
         """
         play a round for the predators
 
@@ -91,7 +91,7 @@ class Game:
         # predators moved
         return self._state, {0: -0.5, 1: -0.5}, False
 
-    def play_prey(self):
+    def _play_prey(self):
         """
         play a round for the prey
         """

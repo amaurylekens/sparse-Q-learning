@@ -1,18 +1,23 @@
 import random
+from typing import Dict, Tuple
+
 import numpy as np
+
+from actions import Actions
 
 
 class MDPAgent:
-    def __init__(self, n_action, ncol, nrow, Q_t):
-        self.n_action = n_action
-        self.n_joint_action = n_action*n_action
+    def __init__(self, Q_t: Dict[str, Dict[Tuple[str, str], float]]):
         self.Q_t = Q_t
 
     @staticmethod
     def get_init_Q_t(n_joint_action, ncol, nrow):
-        return {repr(((x1, y1), (x2, y2))) : [0]*n_joint_action for x1 in range(ncol) for y1 in range(nrow) for x2 in range(nrow) for y2 in range(ncol) if not ((x1==x2 and y1==y2) or (x1==0 and y1==0) or (x2==0 and y2==0)) }
+        return {repr(((x1, y1), (x2, y2))):
+                {(a1, a2): 0 for a1 in Actions.actions for a2 in Actions.actions}
+                for x1 in range(ncol) for y1 in range(nrow) for x2 in range(nrow) for y2 in range(ncol)
+                if not ((x1 == x2 and y1 == y2) or (x1 == 0 and y1 == 0) or (x2 == 0 and y2 == 0))}
 
-    def get_action_choice(self, state, epsilon):
+    def get_action_choice(self, state: str, epsilon: float):
 
         """
         return the agent's choice of action for a particular state
@@ -23,26 +28,23 @@ class MDPAgent:
         """
 
         # e-greedy
-        if (random.uniform(0, 1) < epsilon):
-            a_t = random.randint(0, self.n_joint_action-1)
+        if random.random() < epsilon:
+            return {0: random.choice(Actions.actions), 1: random.choice(Actions.actions)}
         else:
-            
             # Get the Q-values for the actions in this state
             Qs_t = self.Q_t[state]
 
+            max_Qs_t = max(Qs_t.values())
+
             # find index of the max Q-values
-            max_index = [i for i, j in enumerate(Qs_t)
-                         if j == max(Qs_t)]
+            max_index = [a for a, q in Qs_t.items()
+                         if q == max_Qs_t]
 
             # choose one of the max-index with uniform distribution
-            p = [1/len(max_index) for i in range(len(max_index))]
-            sel_index = np.random.choice(max_index, p=p)
-            a_t = sel_index
+            selected = random.choice(max_index)
+            return {0: selected[0], 1: selected[1]}
 
-        return self.index_to_joint_action(a_t)
-            
-
-    def make_q_update(self, reward, state, joint_action, next_state, alpha, gamma):
+    def make_q_update(self, reward, state: str, joint_action: Dict[int, str], next_state, alpha: float, gamma: float):
 
         """
         update the Q-table for the previous state and the chosen joint action
@@ -54,19 +56,11 @@ class MDPAgent:
         :param alpha: learning rate
         :param gamma: discount factor
         """
-        action_index = self.joint_action_to_index(joint_action)
-        previous_value = self.Q_t[state][action_index]
-        max_future_reward = max(self.Q_t[next_state])
-        new_value = reward + gamma*max_future_reward
+        previous_value = self.Q_t[state][(joint_action[0], joint_action[1])]
+        if '(0, 0)' in next_state:
+            max_future_reward = 0
+        else:
+            max_future_reward = max(self.Q_t[next_state].values())
+        new_value = reward + gamma * max_future_reward
 
-        self.Q_t[state][action_index] = (1-alpha)*previous_value + alpha*new_value
-
-    def index_to_joint_action(self, index):
-        action0 = index // self.n_action
-        action1 = index % self.n_action
-        return (action0, action1)
-
-    def joint_action_to_index(self, joint_action):
-        index = joint_action[0]*self.n_action + joint_action[1]
-        return index
-    
+        self.Q_t[state][(joint_action[0], joint_action[1])] = (1 - alpha) * previous_value + alpha * new_value

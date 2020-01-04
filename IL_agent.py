@@ -30,7 +30,6 @@ class ILAgent:
         if random.random() < epsilon:
             return random.choice(Actions.actions)
         else:
-
             # Get the Q-values for the actions in this state
             Qs_t = self.Q_t[state]
 
