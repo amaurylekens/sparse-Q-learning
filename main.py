@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 import sys
 from multiprocessing import Process, Manager, Lock
 from statistics import mean
@@ -81,9 +80,7 @@ The commands are:
         parser.add_argument('-v', '--verbose', action='store_true')
 
         args = parser.parse_args(sys.argv[2:])
-        print('Running test mode, grid={}, run={}, episode{}'.format(args.g,
-                                                                     args.r,
-                                                                     args.e))
+        print('Running test mode, grid={}, run={}, episode={}'.format(args.g, args.r, args.e))
 
         # run the test mode with the arguments
         grid = (args.g, args.g)
