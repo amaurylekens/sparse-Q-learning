@@ -4,7 +4,7 @@ import os
 import sys
 from multiprocessing import Process, Manager, Lock
 from statistics import mean
-from typing import List
+from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -91,7 +91,7 @@ The commands are:
                                                                      args.e))
 
         # run the test mode with the arguments
-        grid = args.g
+        grid = (args.g, args.g)
         n_episode = args.e
         n_run = args.r
         verbose = args.verbose
@@ -99,11 +99,12 @@ The commands are:
 
 
 def learn_mode(n_episode, grid, directory):
+    nrow, ncol = grid
     # create a game
-    game = Game(grid, grid)
+    game = Game(nrow, ncol)
 
     # create a specific context graph/rules
-    rules = generate_game_rules(grid)
+    rules = generate_game_rules(ncol)
 
     # create predators
     predators = [Agent(0, rules), Agent(1, rules)]
@@ -153,18 +154,18 @@ def play_mode(grid, path):
             break
 
 
-def test_mode(n_episode: int, n_run: int, grid: int, verbose=False, size_interval: int = 500):
+def test_mode(n_episode: int, n_run: int, grid: Tuple[int, int], verbose=False, size_interval: int = 500):
     def f_run(run_times, test_games, size_interval,
               n_episode, line_to_up, run, lock, verbose):
 
         # create a specific context graph/rules
-        rules = generate_game_rules(grid)
+        rules = generate_game_rules(grid[0])
 
         # create predator agents
         predators = [Agent(0, rules), Agent(1, rules)]
 
         # game used to run episodes
-        learn_game = Game(grid, grid)
+        learn_game = Game(grid[0], grid[1])
 
         n_interval = int(n_episode / size_interval)
 
