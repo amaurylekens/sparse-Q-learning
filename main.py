@@ -61,21 +61,16 @@ The commands are:
         parser = argparse.ArgumentParser(
             description='Play the game with a learned policy')
         parser.add_argument('directory', help="directory of the rules file")
+        parser.add_argument('name', help="name of the rules file")
         parser.add_argument('-g', help="grid size", default=4, type=int)
 
         args = parser.parse_args(sys.argv[2:])
-        print('Running play mode, grid={}, directory={}'.format(args.g, args.directory))
+        print('Running play mode, grid={}, directory={} name={}'.format(args.g, args.directory, args.name))
 
         # run the play mode with the arguments
         grid = (args.g, args.g)
-        file = "{}_{}_grid.json".format(args.g, args.g)
-        path = "{}/{}".format(args.directory, file)
 
-        # check if there is a good rules file, if there is let's play
-        if file in os.listdir("./{}".format(args.directory)):
-            play_mode(grid, path)
-        else:
-            print("no rule file in this directory for this grid size")
+        play_mode(grid, args.directory, args.name)
 
     def test(self):
         parser = argparse.ArgumentParser(
@@ -117,7 +112,7 @@ def learn_mode(n_episode, grid, directory):
     rules.save_rules(directory=directory, name=file_name)
 
 
-def play_mode(grid, path):
+def play_mode(grid, directory, file_name):
     ncol, nrow = grid
 
     # create a game
@@ -125,12 +120,14 @@ def play_mode(grid, path):
 
     # create a specific context graph and load rules
     rules = Rules()
-    rules.load_rules(path)
+    rules.load_rules(directory=directory, name=file_name)
 
     # create predators
     predators = [Agent(0, rules), Agent(1, rules)]
 
-    while True:
+    capture = False
+
+    while not capture:
         state = game.state
 
         # compute the action of the predators

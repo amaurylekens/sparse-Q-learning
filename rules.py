@@ -86,13 +86,15 @@ class Rules:
         :param directory: directory where to load
         :param name: load file name
         """
-        path = os.path.join(directory, f'{name}.json')
+        path = os.path.join(directory, f'{name}')
         with open(path) as f:
             data = json.load(f)
 
         self._rules: Dict[int, Rule] = dict()
         for key, value in data.items():
-            rule = Rule(value['state'], value['actions'], value['value'])
+            state = {int(i): tuple(s) for i, s in value['state'].items()}
+            actions = {int(i): a for i, a in value['actions'].items()}
+            rule = Rule(state, actions, value['value'])
             self._rules[int(key)] = rule
 
     def get_rules_with_agent(self, pred_id, state):
